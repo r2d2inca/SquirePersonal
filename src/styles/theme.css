@@ -1,0 +1,54 @@
+/* Dark mode overrides — swaps all CSS custom properties */
+[data-theme="dark"] {
+  /* Primary — aged gold (inverted for dark) */
+  --color-gold-50: #2a2416;
+  --color-gold-100: #3a3220;
+  --color-gold-200: #4d4228;
+  --color-gold-300: #7a6530;
+  --color-gold-400: #c9981e;
+  --color-gold-500: #e6b835;
+  --color-gold-600: #f2cd5e;
+  --color-gold-700: #f9e4a1;
+
+  /* Parchment — dark backgrounds */
+  --color-parchment-50: #1a1714;
+  --color-parchment-100: #201d18;
+  --color-parchment-200: #282420;
+  --color-parchment-300: #352f28;
+  --color-parchment-400: #4a4238;
+
+  /* Ink — light text on dark */
+  --color-ink-900: #ede8df;
+  --color-ink-700: #c4bba8;
+  --color-ink-500: #b5a68e;
+  --color-ink-300: #8a7b62;
+
+  /* Leather — darker surfaces */
+  --color-leather-900: #0f0d0a;
+  --color-leather-800: #171411;
+  --color-leather-700: #1f1b16;
+  --color-leather-600: #2a251e;
+  --color-leather-500: #352f26;
+
+  /* Arcane — brighter on dark */
+  --color-arcane-400: #8b7aee;
+  --color-arcane-500: #7b6cdd;
+  --color-arcane-600: #6a5acd;
+
+  /* Semantic — brighter for readability */
+  --color-health: #c45454;
+  --color-heal: #4a9e65;
+  --color-warning: #d4a017;
+  --color-danger: #c44040;
+  --color-success: #4a9e65;
+  --color-temphp: #38bdf8;
+
+  /* Shadows — same soft, wide shape as light, but deeper so it reads on dark */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-inner-parchment: inset 0 0 30px rgba(0, 0, 0, 0.3);
+
+  /* The bloom has to be far subtler on a dark ground or it fogs the whole page. */
+  --app-bloom: radial-gradient(90% 60% at 50% 0%, rgba(230, 184, 53, 0.07), rgba(230, 184, 53, 0) 60%);
+}

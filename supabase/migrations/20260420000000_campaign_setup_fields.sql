@@ -1,0 +1,9 @@
+-- Add campaign setup wizard fields
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS setting TEXT DEFAULT '';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS tone TEXT[] DEFAULT '{}';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS starting_level INTEGER DEFAULT 1;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS house_rules TEXT DEFAULT '';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS schedule TEXT DEFAULT '';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS session_zero_notes TEXT DEFAULT '';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS module_template TEXT DEFAULT NULL;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS content_boundaries TEXT DEFAULT '';

@@ -1,0 +1,111 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+@theme {
+  /* Fantasy color palette */
+  --color-gold-50: #fefbf0;
+  --color-gold-100: #fdf3d0;
+  --color-gold-200: #f9e4a1;
+  --color-gold-300: #f2cd5e;
+  --color-gold-400: #e6b835;
+  --color-gold-500: #c9981e;
+  --color-gold-600: #a07415;
+  --color-gold-700: #7a5512;
+
+  --color-parchment-50: #faf6ee;
+  --color-parchment-100: #f5edda;
+  --color-parchment-200: #ecdcc0;
+  --color-parchment-300: #dfc9a0;
+  --color-parchment-400: #d0b07a;
+
+  --color-ink-900: #1a1209;
+  --color-ink-700: #3d2f1a;
+  --color-ink-500: #6b5a3e;
+  --color-ink-300: #9c8b6e;
+
+  --color-leather-900: #1e160e;
+  --color-leather-800: #2d2118;
+  --color-leather-700: #3d2f1f;
+  --color-leather-600: #4d3d29;
+  --color-leather-500: #5e4c35;
+
+  --color-arcane-400: #7b68ee;
+  --color-arcane-500: #6a5acd;
+  --color-arcane-600: #5849b0;
+
+  --color-health: #8b2d2d;
+  --color-heal: #2d6b3f;
+  --color-danger: #a62020;
+  --color-success: #2d6b3f;
+  --color-warning: #b8860b;
+  --color-temphp: #0e7490;
+
+  --font-display: 'MedievalSharp', 'Cinzel', serif;
+  --font-body: 'Crimson Text', 'Palatino', serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* Elevation. These were previously defined only for dark mode, which left every
+   light-mode card with no drop shadow at all — the main reason the app read flat
+   next to the marketing site. The soft, wide shadow is the signature of the shell. */
+:root {
+  --shadow-sm: 0 2px 6px rgba(60, 40, 12, 0.06);
+  --shadow-md: 0 10px 30px rgba(60, 40, 12, 0.14);
+  --shadow-lg: 0 16px 40px rgba(60, 40, 12, 0.18);
+  --shadow-inner-parchment: inset 0 0 30px rgba(122, 85, 18, 0.04);
+
+  /* Gold bloom behind the app content, echoing the landing hero. */
+  --app-bloom: radial-gradient(90% 60% at 50% 0%, rgba(230, 184, 53, 0.16), rgba(230, 184, 53, 0) 60%);
+}
+
+/* Base styles */
+html {
+  font-family: var(--font-body);
+  color: var(--color-ink-900);
+  background: var(--color-parchment-200);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-parchment-300);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-parchment-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-500);
+}
+
+/* Prevent iOS zoom on input focus */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Dark mode base */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] html,
+html[data-theme="dark"] {
+  background: #282420;
+}
