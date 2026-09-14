@@ -105,7 +105,7 @@ export function ImportCharacterModal({ open, onClose, userId, existingCharacterI
     setImporting(true)
     setImportError(null)
     try {
-      await importCharacter(userId, preview, existingCharacterId)
+      await importCharacter(userId, preview)
       onImportComplete()
       onClose()
     } catch (err) {
@@ -229,6 +229,10 @@ export function ImportCharacterModal({ open, onClose, userId, existingCharacterI
                 {preview.spells.length > 0 && <span>{preview.spells.length} spells</span>}
                 {preview.inventoryItems.length > 0 && <span>{preview.inventoryItems.length} items</span>}
                 {preview.character.features.length > 0 && <span>{preview.character.features.length} features</span>}
+                {preview.notes.length > 0 && <span>{preview.notes.length} notes</span>}
+                {preview.loreEntries.length > 0 && <span>{preview.loreEntries.length} lore entries</span>}
+                {preview.sessionLogs.length > 0 && <span>{preview.sessionLogs.length} session logs</span>}
+                {preview.portrait && <span>portrait</span>}
               </div>
             </div>
           </Card>

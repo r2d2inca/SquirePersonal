@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Moon, Coffee, ArrowUp, Trash2, Swords, Sparkles, User, Shield, Download } from 'lucide-react'
+import { Moon, Coffee, ArrowUp, Trash2, Swords, Sparkles, User } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { playSound } from '@/lib/sound'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ExportPDFButton } from './ExportPDFButton'
-import { downloadCharacterJSON } from '@/lib/characterExport'
+import { ExportJSONButton } from './ExportJSONButton'
 import { CharacterHeader } from './CharacterHeader'
 import { AbilityScores } from './AbilityScores'
 import { SavingThrows } from './SavingThrows'
@@ -88,9 +88,7 @@ export function CharacterSheet({ character, onUpdate, onLevelUp, onSubclassChang
             </Button>
           )}
           <ExportPDFButton character={character} spells={spells} spellSlots={spellSlots} items={items} />
-          <Button variant="secondary" size="sm" onClick={() => downloadCharacterJSON(character, spells, spellSlots, items, effects)}>
-            <Download size={14} /> <span className="hidden md:inline ml-1">Export JSON</span>
-          </Button>
+          <ExportJSONButton characterId={character.id} />
           {onDeleteCharacter && (
             <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)}>
               <Trash2 size={14} /> <span className="hidden md:inline ml-1">Delete</span>
