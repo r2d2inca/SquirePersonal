@@ -33,7 +33,16 @@ export function useAuth() {
   }, [])
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      // Without this, Supabase falls back to the project's Site URL (which
+      // defaults to localhost), so confirmation emails sent from the deployed
+      // app pointed people at a server they can't reach. Sending them back to
+      // the origin they actually signed up from works for both local dev and
+      // production. /login forwards on to /dashboard once the session lands.
+      options: { emailRedirectTo: `${window.location.origin}/login` },
+    })
     if (error) throw error
   }, [])
 
