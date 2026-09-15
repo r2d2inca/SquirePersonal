@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { validateImportData, validatePdfImportData, importCharacter } from '@/lib/characterImport'
+import { EXPORT_VERSION } from '@/lib/characterExport'
 import type { CharacterExportEnvelope } from '@/lib/characterExport'
 
 interface ImportCharacterModalProps {
@@ -225,23 +226,46 @@ export function ImportCharacterModal({ open, onClose, userId, existingCharacterI
                   </div>
                 ))}
               </div>
-              <div className="flex flex-wrap gap-3 mt-3 text-xs text-ink-500">
-                {preview.spells.length > 0 && <span>{preview.spells.length} spells</span>}
-                {preview.inventoryItems.length > 0 && <span>{preview.inventoryItems.length} items</span>}
-                {preview.character.features.length > 0 && <span>{preview.character.features.length} features</span>}
-                {preview.notes.length > 0 && <span>{preview.notes.length} notes</span>}
-                {preview.loreEntries.length > 0 && <span>{preview.loreEntries.length} lore entries</span>}
-                {preview.sessionLogs.length > 0 && <span>{preview.sessionLogs.length} session logs</span>}
-                {preview.portrait && <span>portrait</span>}
+              {/* Every count is shown, zeros included — a file that carries no notes or lore
+                  should say so here rather than look the same as one that does. */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3 text-xs">
+                {([
+                  ['spells', preview.spells.length],
+                  ['items', preview.inventoryItems.length],
+                  ['features', preview.character.features.length],
+                  ['notes', preview.notes.length],
+                  ['lore entries', preview.loreEntries.length],
+                  ['session logs', preview.sessionLogs.length],
+                ] as [string, number][]).map(([label, count]) => (
+                  <span key={label} className={count > 0 ? 'text-ink-500' : 'text-ink-300'}>
+                    {count} {label}
+                  </span>
+                ))}
+                <span className={preview.portrait ? 'text-ink-500' : 'text-ink-300'}>
+                  {preview.portrait ? 'portrait' : 'no portrait'}
+                </span>
               </div>
             </div>
           </Card>
+
+          {tab === 'json' && preview._meta.version < EXPORT_VERSION && (
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle size={14} className="text-warning mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-ink-700">
+                This file uses an older export format (v{preview._meta.version}). Exports from before
+                notes, lore and session logs were included don't contain them, so they can't be
+                restored from here — what's listed above is everything the file holds. Open the
+                character in Squire and export it again to carry the rest across.
+              </p>
+            </div>
+          )}
 
           {existingCharacterId && (
             <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 flex items-start gap-2">
               <AlertTriangle size={14} className="text-warning mt-0.5 flex-shrink-0" />
               <p className="text-xs text-ink-700">
-                This will archive your current character. You can re-import it later from an export file.
+                This replaces your current character, and Squire can't bring it back afterwards.
+                Export it first if you want to keep it.
               </p>
             </div>
           )}

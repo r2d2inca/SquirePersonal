@@ -56,7 +56,7 @@ type AbilityMethod = 'standard' | 'pointbuy' | 'manual'
 export function CharacterCreatePage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const { createCharacter, isCreating } = useCharacter(user?.id)
+  const { character: activeCharacter, createCharacter, isCreating } = useCharacter(user?.id)
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
@@ -1236,6 +1236,7 @@ export function CharacterCreatePage() {
             open={showImportModal}
             onClose={() => setShowImportModal(false)}
             userId={user.id}
+            existingCharacterId={activeCharacter?.id}
             onImportComplete={() => {
               queryClient.invalidateQueries({ queryKey: ['character', user?.id] })
               navigate('/dashboard')
