@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { validateImportData, validatePdfImportData, importCharacter } from '@/lib/characterImport'
 import { EXPORT_VERSION } from '@/lib/characterExport'
 import type { CharacterExportEnvelope } from '@/lib/characterExport'
+import { pushToast } from '@/stores/toastStore'
 
 interface ImportCharacterModalProps {
   open: boolean
@@ -106,7 +107,8 @@ export function ImportCharacterModal({ open, onClose, userId, existingCharacterI
     setImporting(true)
     setImportError(null)
     try {
-      await importCharacter(userId, preview)
+      const { warnings } = await importCharacter(userId, preview)
+      for (const message of warnings) pushToast({ message, tone: 'danger' })
       onImportComplete()
       onClose()
     } catch (err) {

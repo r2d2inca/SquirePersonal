@@ -357,28 +357,46 @@ async function insertRows(table: string, label: string, rows: object[]) {
   if (error) throw new Error(`Failed to insert ${label}: ${error.message}`)
 }
 
+export interface ImportResult {
+  characterId: string
+  /** Non-fatal problems, e.g. a portrait that could not be uploaded. */
+  warnings: string[]
+}
+
 /**
  * Creates a new character from an export, including notes, lore, session logs and portrait.
  * The new character stays inactive until every row is written, and only then replaces the
  * user's active character — so a failed import leaves the current character untouched.
  */
-export async function importCharacter(userId: string, data: CharacterExportEnvelope): Promise<string> {
+export async function importCharacter(userId: string, data: CharacterExportEnvelope): Promise<ImportResult> {
   const { data: previouslyActive, error: activeError } = await supabase
     .from('characters').select('id').eq('user_id', userId).eq('is_active', true)
   if (activeError) throw new Error(`Failed to check current character: ${activeError.message}`)
   const previousIds: string[] = (previouslyActive ?? []).map((c: { id: string }) => c.id)
 
   const characterId = crypto.randomUUID()
+  const warnings: string[] = []
   let characterInserted = false
   let portraitPath: string | null = null
   let previousDeactivated = false
 
   try {
+    // The portrait is decoration; losing it must not cost the character everything else.
+    // (A destination project with no storage bucket configured would otherwise fail the
+    // whole import before a single row was written.)
     let portraitUrl: string | null = null
     if (data.portrait) {
-      const uploaded = await uploadPortrait(userId, characterId, data.portrait)
-      portraitPath = uploaded.path
-      portraitUrl = uploaded.url
+      try {
+        const uploaded = await uploadPortrait(userId, characterId, data.portrait)
+        portraitPath = uploaded.path
+        portraitUrl = uploaded.url
+      } catch (err) {
+        warnings.push(
+          `The portrait could not be saved, so it was left out: ${
+            err instanceof Error ? err.message : 'upload failed'
+          }. Everything else was imported.`,
+        )
+      }
     }
 
     const { error: charError } = await supabase.from('characters').insert({
@@ -424,7 +442,7 @@ export async function importCharacter(userId: string, data: CharacterExportEnvel
     throw err
   }
 
-  return characterId
+  return { characterId, warnings }
 }
 
 /** Best-effort cleanup of a partially written import. Errors are logged, not thrown. */
