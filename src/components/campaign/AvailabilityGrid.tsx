@@ -56,6 +56,31 @@ export function AvailabilityGrid({ grid, painted, mode, onChange }: Availability
     [mode, onChange],
   )
 
+  /**
+   * Paint a whole row or column at once — essential once the window is a full
+   * 24 hours, where cell-by-cell would be 168 taps. Toggles: if every paintable
+   * cell in the run already matches the current mode, the run is cleared
+   * instead, so the same click undoes it.
+   */
+  const paintRun = useCallback(
+    (cellKeys: string[]) => {
+      const paintable = cellKeys.filter((key) => !grid.cellsByKey.get(key)?.isPast)
+      if (paintable.length === 0) return
+
+      const target = mode === 'busy' ? undefined : mode
+      const allMatch = paintable.every((key) => workingRef.current.get(key) === target)
+
+      const next = new Map(workingRef.current)
+      for (const key of paintable) {
+        if (target === undefined || allMatch) next.delete(key)
+        else next.set(key, target)
+      }
+      workingRef.current = next
+      onChange(next)
+    },
+    [grid, mode, onChange],
+  )
+
   const endPainting = useCallback(() => setIsPainting(false), [])
 
   useEffect(() => {
@@ -77,7 +102,13 @@ export function AvailabilityGrid({ grid, painted, mode, onChange }: Availability
           {grid.days.map((day) => {
             const { weekday, date } = formatDayHeading(day)
             return (
-              <div key={day.key} className="pb-1.5 text-center">
+              <button
+                key={day.key}
+                type="button"
+                onClick={() => paintRun(grid.hours.map((_, i) => `${day.key}|${i}`))}
+                title={`Paint all of ${weekday} ${date}`}
+                className="pb-1.5 text-center cursor-pointer rounded hover:bg-parchment-200/60 transition-colors"
+              >
                 <div
                   className={`font-display text-xs uppercase tracking-wider ${
                     day.isToday ? 'text-gold-600' : 'text-ink-500'
@@ -88,7 +119,7 @@ export function AvailabilityGrid({ grid, painted, mode, onChange }: Availability
                 <div className={`text-xs ${day.isToday ? 'text-gold-600 font-semibold' : 'text-ink-300'}`}>
                   {date}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -100,9 +131,14 @@ export function AvailabilityGrid({ grid, painted, mode, onChange }: Availability
             className="grid gap-px"
             style={{ gridTemplateColumns: `3.5rem repeat(${grid.days.length}, 1fr)` }}
           >
-            <div className="pr-2 text-right text-xs text-ink-300 leading-7 font-mono">
+            <button
+              type="button"
+              onClick={() => paintRun(grid.days.map((d) => `${d.key}|${hourIndex}`))}
+              title={`Paint ${formatHourLabel(hour)} across the week`}
+              className="pr-2 text-right text-xs text-ink-300 leading-7 font-mono cursor-pointer rounded hover:bg-parchment-200/60 hover:text-ink-700 transition-colors"
+            >
               {formatHourLabel(hour)}
-            </div>
+            </button>
             {grid.days.map((day) => {
               const cellKey = `${day.key}|${hourIndex}`
               const cell = grid.cellsByKey.get(cellKey)

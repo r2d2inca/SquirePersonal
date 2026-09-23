@@ -45,6 +45,26 @@ import type { CoalescedBlock } from '@/lib/scheduling'
 
 const TZ_STORAGE_KEY = 'squire-schedule-timezone'
 
+/**
+ * Day-window presets. `end` may exceed 24 to run past midnight (16→25 is
+ * 4 PM–1 AM); all day is a full 0→24. Evenings is the default because most
+ * groups play then and a 9-row grid is far quicker to fill in than 24 — but
+ * all day is one click away for daytime or weekend games.
+ */
+const WINDOW_PRESETS: { id: string; label: string; start: number; end: number }[] = [
+  { id: 'evenings', label: 'Evenings · 4 PM – 1 AM', start: 16, end: 25 },
+  { id: 'afternoons', label: 'Afternoon & evening · 12 PM – 1 AM', start: 12, end: 25 },
+  { id: 'daytime', label: 'Daytime · 9 AM – 9 PM', start: 9, end: 21 },
+  { id: 'allday', label: 'All day · 24 hours', start: 0, end: 24 },
+]
+
+function hourOptions() {
+  return Array.from({ length: 24 }, (_, h) => ({
+    value: String(h),
+    label: `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`,
+  }))
+}
+
 interface CampaignScheduleSectionProps {
   campaign: Campaign
   userId: string
@@ -97,6 +117,9 @@ export function CampaignScheduleSection({
   const [edits, setEdits] = useState<Record<string, Map<string, AvailabilityStatus>>>({})
   const [slotToConfirm, setSlotToConfirm] = useState<BestSlot | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  // Settings form state, so picking a preset can move the custom hour selects.
+  const [formStart, setFormStart] = useState(16)
+  const [formEnd, setFormEnd] = useState(25)
   const [sessionToCancel, setSessionToCancel] = useState<string | null>(null)
 
   // One ticking clock for the whole section: hours grey out as they pass and a
@@ -219,14 +242,10 @@ export function CampaignScheduleSection({
     e.preventDefault()
     if (!onUpdateCampaign) return
     const form = new FormData(e.currentTarget)
-    const start = Number(form.get('day_start'))
-    let end = Number(form.get('day_end'))
-    // An end at or before the start means the window runs past midnight.
-    if (end <= start) end += 24
     await onUpdateCampaign({
       schedule_weeks_ahead: Number(form.get('weeks')),
-      schedule_day_start_hour: start,
-      schedule_day_end_hour: end,
+      schedule_day_start_hour: formStart,
+      schedule_day_end_hour: formEnd,
     })
     setShowSettings(false)
   }
@@ -317,7 +336,16 @@ export function CampaignScheduleSection({
             {zoneLabel && <span className="text-ink-300">{zoneLabel}</span>}
           </div>
           {isDm && onUpdateCampaign && (
-            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)} aria-label="Grid settings">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFormStart(dayStartHour)
+                setFormEnd(dayEndHour)
+                setShowSettings(true)
+              }}
+              aria-label="Grid settings"
+            >
               <Settings2 size={16} />
             </Button>
           )}
@@ -506,29 +534,58 @@ export function CampaignScheduleSection({
               label: `${n} week${n > 1 ? 's' : ''}`,
             }))}
           />
+          <div className="space-y-2">
+            <span className="font-display text-sm uppercase tracking-wider text-ink-700">
+              Hours shown
+            </span>
+            <div className="grid grid-cols-1 gap-1.5">
+              {WINDOW_PRESETS.map((preset) => {
+                const active = formStart === preset.start && formEnd === preset.end
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setFormStart(preset.start)
+                      setFormEnd(preset.end)
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm text-left border transition-colors cursor-pointer ${
+                      active
+                        ? 'border-gold-400 bg-gold-200/40 text-ink-900'
+                        : 'border-parchment-400 text-ink-700 hover:bg-parchment-200'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Select
-              name="day_start"
-              label="Day starts"
-              defaultValue={String(dayStartHour)}
-              options={Array.from({ length: 24 }, (_, h) => ({
-                value: String(h),
-                label: `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`,
-              }))}
+              label="Starts"
+              value={String(formStart)}
+              onChange={(e) => setFormStart(Number(e.target.value))}
+              options={hourOptions()}
             />
             <Select
-              name="day_end"
-              label="Day ends"
-              defaultValue={String(dayEndHour % 24)}
-              options={Array.from({ length: 24 }, (_, h) => ({
-                value: String(h),
-                label: `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`,
-              }))}
+              label="Ends"
+              value={String(formEnd % 24)}
+              onChange={(e) => {
+                const picked = Number(e.target.value)
+                // An end at or before the start means the window runs past
+                // midnight, except for an exact full day (12 AM to 12 AM).
+                setFormEnd(picked <= formStart ? picked + 24 : picked)
+              }}
+              options={hourOptions()}
             />
           </div>
           <p className="text-xs text-ink-300">
-            An end time at or before the start means the window runs past midnight — 4 PM to 1 AM.
-            Hours are in your timezone; each player's grid is converted to theirs.
+            {formEnd - formStart} hour{formEnd - formStart === 1 ? '' : 's'} per day
+            {formEnd > 24 ? ', running past midnight' : ''}. Fewer hours means less for players to
+            fill in; all day suits daytime or weekend games. Hours are in your timezone — each
+            player's grid is converted to theirs.
           </p>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setShowSettings(false)}>
