@@ -106,6 +106,16 @@ export interface Database {
         Insert: CampaignQuestInsert
         Update: CampaignQuestUpdate
       }
+      campaign_availability: {
+        Row: CampaignAvailability
+        Insert: CampaignAvailabilityInsert
+        Update: Partial<CampaignAvailabilityInsert>
+      }
+      campaign_scheduled_sessions: {
+        Row: CampaignScheduledSession
+        Insert: CampaignScheduledSessionInsert
+        Update: CampaignScheduledSessionUpdate
+      }
       campaign_encounters: {
         Row: CampaignEncounter
         Insert: CampaignEncounterInsert
@@ -354,6 +364,13 @@ export interface Campaign {
   session_zero_notes?: string
   module_template?: string | null
   content_boundaries?: string
+  // Scheduling window: how many weeks ahead players are asked to fill in, and
+  // which slice of the day the availability grid shows. End hour may exceed 24
+  // to mean past midnight (16 -> 25 is "4 PM until 1 AM").
+  schedule_weeks_ahead?: number
+  schedule_day_start_hour?: number
+  schedule_day_end_hour?: number
+  schedule_time_zone?: string | null
   created_at: string
   updated_at: string
 }
@@ -374,6 +391,53 @@ export interface CampaignMember {
 }
 
 export type CampaignMemberInsert = Omit<CampaignMember, 'id' | 'joined_at' | 'profiles' | 'characters'> & { id?: string }
+
+// ─── Scheduling Types ───
+
+/**
+ * One contiguous block a player marked as free. Stored as absolute instants so
+ * it means the same moment to every member regardless of their timezone;
+ * `time_zone` is display-only provenance ("Alex marked this 7-10 PM their time").
+ */
+export interface CampaignAvailability {
+  id: string
+  campaign_id: string
+  user_id: string
+  starts_at: string
+  ends_at: string
+  status: 'available' | 'maybe'
+  time_zone: string
+  created_at: string
+  updated_at: string
+}
+
+export type CampaignAvailabilityInsert = Omit<
+  CampaignAvailability,
+  'id' | 'created_at' | 'updated_at'
+> & { id?: string }
+
+/** A session the DM has locked in. Distinct from campaign_session_logs, which recaps one already played. */
+export interface CampaignScheduledSession {
+  id: string
+  campaign_id: string
+  created_by: string
+  starts_at: string
+  ends_at: string
+  title: string
+  notes: string
+  status: 'confirmed' | 'cancelled'
+  created_at: string
+  updated_at: string
+}
+
+export type CampaignScheduledSessionInsert = Omit<
+  CampaignScheduledSession,
+  'id' | 'created_at' | 'updated_at'
+> & { id?: string }
+
+export type CampaignScheduledSessionUpdate = Partial<
+  Omit<CampaignScheduledSession, 'id' | 'campaign_id' | 'created_by' | 'created_at' | 'updated_at'>
+>
 
 // ─── NPC Types ───
 

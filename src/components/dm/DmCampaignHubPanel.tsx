@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
-import { Users, BookOpen, Map, MessageCircle, Compass, Target, Swords } from 'lucide-react'
+import { Users, BookOpen, Map, MessageCircle, Compass, Target, Swords, CalendarDays } from 'lucide-react'
 import { useUIStore, type CampaignSubTab } from '@/stores/uiStore'
 import { useCampaignMembers } from '@/hooks/useCampaignMembers'
 import { useCampaignSessionLogs } from '@/hooks/useCampaignSessionLogs'
 import { useCampaignLore } from '@/hooks/useCampaignLore'
 import { useCampaignQuests } from '@/hooks/useCampaignQuests'
+import { useCampaignScheduling } from '@/hooks/useCampaignScheduling'
+import { useCampaigns } from '@/hooks/useCampaigns'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { CampaignMembersSection } from '@/components/campaign/CampaignMembersSection'
 import { CampaignSessionLogsSection } from '@/components/campaign/CampaignSessionLogsSection'
@@ -12,6 +14,7 @@ import { CampaignLoreSection } from '@/components/campaign/CampaignLoreSection'
 import { CampaignChatSection } from '@/components/campaign/CampaignChatSection'
 import { CampaignQuestsSection } from '@/components/campaign/CampaignQuestsSection'
 import { CampaignCombatSection } from '@/components/campaign/CampaignCombatSection'
+import { CampaignScheduleSection } from '@/components/campaign/CampaignScheduleSection'
 
 const SUB_TABS: { id: CampaignSubTab; label: string; icon: typeof Users }[] = [
   { id: 'members', label: 'Members', icon: Users },
@@ -20,6 +23,7 @@ const SUB_TABS: { id: CampaignSubTab; label: string; icon: typeof Users }[] = [
   { id: 'quests', label: 'Quests', icon: Target },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'combat', label: 'Combat', icon: Swords },
+  { id: 'schedule', label: 'Schedule', icon: CalendarDays },
 ]
 
 interface DmCampaignHubPanelProps {
@@ -33,6 +37,18 @@ export function DmCampaignHubPanel({ campaignId, campaignName, userId }: DmCampa
   const { logs, addLog, updateLog, deleteLog } = useCampaignSessionLogs(campaignId)
   const { entries: loreEntries, addEntry: addLore, updateEntry: updateLore, deleteEntry: deleteLore } = useCampaignLore(campaignId)
   const { quests, addQuest, updateQuest, deleteQuest } = useCampaignQuests(campaignId)
+  const {
+    availability,
+    sessions: scheduledSessions,
+    isSaving: isSavingAvailability,
+    saveAvailability,
+    scheduleSession,
+    deleteSession,
+  } = useCampaignScheduling(campaignId)
+  // The scheduling grid's window settings live on the campaign row, so the DM
+  // view needs the record itself, not just its id and name.
+  const { campaigns, updateCampaign } = useCampaigns(userId)
+  const campaign = campaigns.find((c) => c.id === campaignId)
   const campaignSubTab = useUIStore((s) => s.campaignSubTab)
   const setCampaignSubTab = useUIStore((s) => s.setCampaignSubTab)
 
@@ -134,6 +150,23 @@ export function DmCampaignHubPanel({ campaignId, campaignName, userId }: DmCampa
         <CampaignCombatSection
           campaignId={campaignId}
           userId={userId}
+        />
+      )}
+
+      {campaignSubTab === 'schedule' && campaign && (
+        <CampaignScheduleSection
+          campaign={campaign}
+          userId={userId}
+          members={members}
+          memberNames={memberNames}
+          availability={availability}
+          sessions={scheduledSessions}
+          isSaving={isSavingAvailability}
+          isDm
+          onSaveAvailability={saveAvailability}
+          onScheduleSession={scheduleSession}
+          onDeleteSession={deleteSession}
+          onUpdateCampaign={(updates) => updateCampaign({ id: campaignId, updates })}
         />
       )}
     </div>

@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { Users, BookOpen, Map, MessageCircle, Compass, Target, Swords } from 'lucide-react'
+import { Users, BookOpen, Map, MessageCircle, Compass, Target, Swords, CalendarDays } from 'lucide-react'
 import { useUIStore, type CampaignSubTab } from '@/stores/uiStore'
 import { usePlayerCampaign } from '@/hooks/usePlayerCampaign'
 import { useCampaignMembers } from '@/hooks/useCampaignMembers'
 import { useCampaignSessionLogs } from '@/hooks/useCampaignSessionLogs'
 import { useCampaignLore } from '@/hooks/useCampaignLore'
 import { useCampaignQuests } from '@/hooks/useCampaignQuests'
+import { useCampaignScheduling } from '@/hooks/useCampaignScheduling'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { CampaignMembersSection } from './CampaignMembersSection'
@@ -14,6 +15,7 @@ import { CampaignLoreSection } from './CampaignLoreSection'
 import { CampaignChatSection } from './CampaignChatSection'
 import { CampaignQuestsSection } from './CampaignQuestsSection'
 import { CampaignCombatSection } from './CampaignCombatSection'
+import { CampaignScheduleSection } from './CampaignScheduleSection'
 
 const SUB_TABS: { id: CampaignSubTab; label: string; icon: typeof Users }[] = [
   { id: 'members', label: 'Members', icon: Users },
@@ -22,6 +24,7 @@ const SUB_TABS: { id: CampaignSubTab; label: string; icon: typeof Users }[] = [
   { id: 'quests', label: 'Quests', icon: Target },
   { id: 'chat', label: 'Chat', icon: MessageCircle },
   { id: 'combat', label: 'Combat', icon: Swords },
+  { id: 'schedule', label: 'Schedule', icon: CalendarDays },
 ]
 
 interface CampaignPanelProps {
@@ -34,6 +37,14 @@ export function CampaignPanel({ userId }: CampaignPanelProps) {
   const { logs, addLog, updateLog, deleteLog } = useCampaignSessionLogs(campaign?.id)
   const { entries: loreEntries, addEntry: addLore, updateEntry: updateLore, deleteEntry: deleteLore } = useCampaignLore(campaign?.id)
   const { quests, addQuest, updateQuest, deleteQuest } = useCampaignQuests(campaign?.id)
+  const {
+    availability,
+    sessions: scheduledSessions,
+    isSaving: isSavingAvailability,
+    saveAvailability,
+    scheduleSession,
+    deleteSession,
+  } = useCampaignScheduling(campaign?.id)
   const campaignSubTab = useUIStore((s) => s.campaignSubTab)
   const setCampaignSubTab = useUIStore((s) => s.setCampaignSubTab)
 
@@ -147,6 +158,21 @@ export function CampaignPanel({ userId }: CampaignPanelProps) {
         <CampaignCombatSection
           campaignId={campaign.id}
           userId={userId}
+        />
+      )}
+
+      {campaignSubTab === 'schedule' && (
+        <CampaignScheduleSection
+          campaign={campaign}
+          userId={userId}
+          members={members}
+          memberNames={memberNames}
+          availability={availability}
+          sessions={scheduledSessions}
+          isSaving={isSavingAvailability}
+          onSaveAvailability={saveAvailability}
+          onScheduleSession={scheduleSession}
+          onDeleteSession={deleteSession}
         />
       )}
     </div>

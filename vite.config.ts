@@ -218,6 +218,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // The main bundle exceeds Workbox's default 2 MiB precache cap; raise it so the
+        // service worker precaches the app shell (build otherwise fails once the bundle grows).
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

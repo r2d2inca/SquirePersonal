@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type TabId = 'character' | 'spells' | 'inventory' | 'ai' | 'sessions' | 'lore' | 'notes' | 'campaign'
 
-export type CampaignSubTab = 'members' | 'sessions' | 'lore' | 'chat' | 'quests' | 'combat'
+export type CampaignSubTab = 'members' | 'sessions' | 'lore' | 'chat' | 'quests' | 'combat' | 'schedule'
 
 interface UIState {
   activeTab: TabId
