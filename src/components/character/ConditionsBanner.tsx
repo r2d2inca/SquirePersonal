@@ -84,7 +84,9 @@ export function ConditionsBanner({ characterId, effects, onAddEffect, onRemoveEf
   }
 
   return (
-    <Card className="!p-3">
+    // hover={false}: the lift transform would create a stacking context and trap the
+    // condition/buff popups beneath the HP card below. z-30 keeps them above later siblings.
+    <Card hover={false} className="!p-3 relative z-30">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-display text-xs uppercase tracking-wider text-ink-500">Conditions</span>
 

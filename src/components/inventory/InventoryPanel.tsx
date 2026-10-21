@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Plus, Minus, Backpack, Sword, Shield, Package, Gem, Sparkles, ChevronDown, Pencil, RotateCcw } from 'lucide-react'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { InventoryForm } from './InventoryForm'
 import { ITEM_CATEGORIES } from '@/lib/constants'
+import { pushToast } from '@/stores/toastStore'
 import type { InventoryItem, InventoryItemInsert, InventoryItemUpdate } from '@/lib/types/database'
 
 const CATEGORY_ICONS: Record<string, typeof Sword> = {
@@ -44,6 +45,8 @@ interface InventoryPanelProps {
   onUpdateItem: (id: string, updates: InventoryItemUpdate) => void
   onDeleteItem: (id: string) => void
   onUpdateCurrency: (currency: Partial<Currency>) => void
+  /** Attunement slots (3 by default; Artificers get more at 10/14/18). */
+  maxAttuned?: number
 }
 
 export function InventoryPanel({
@@ -54,6 +57,7 @@ export function InventoryPanel({
   onUpdateItem,
   onDeleteItem,
   onUpdateCurrency,
+  maxAttuned = 3,
 }: InventoryPanelProps) {
   const [showForm, setShowForm] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
@@ -89,6 +93,38 @@ export function InventoryPanel({
   }
 
   const filtered = filterCategory ? items.filter((i) => i.category === filterCategory) : items
+  const attunedCount = items.filter((i) => i.is_attuned).length
+
+  function toggleAttune(item: InventoryItem) {
+    if (!item.is_attuned && attunedCount >= maxAttuned) {
+      pushToast({ tag: 'attune', tone: 'danger', message: `You can only attune to ${maxAttuned} items. Unattune one first.` })
+      return
+    }
+    onUpdateItem(item.id, { is_attuned: !item.is_attuned })
+  }
+
+  // The edit form resets itself whenever initialData changes identity, so build it once
+  // per item being edited rather than inline (which was a new object every render and
+  // wiped the user's in-progress edits on any background refetch).
+  const editInitialData = useMemo(() => {
+    if (!editingItem) return undefined
+    return {
+      name: editingItem.name,
+      category: editingItem.category,
+      quantity: editingItem.quantity,
+      weight: editingItem.weight,
+      damage: editingItem.damage || '',
+      weapon_properties: editingItem.weapon_properties || '',
+      armor_bonus: editingItem.armor_bonus != null ? String(editingItem.armor_bonus) : '',
+      ac_ability_score: editingItem.ac_ability_score || '',
+      max_ability_modifier: editingItem.max_ability_modifier != null ? String(editingItem.max_ability_modifier) : '',
+      ac_bonus: editingItem.ac_bonus != null ? String(editingItem.ac_bonus) : '',
+      charges_max: editingItem.charges_max != null ? String(editingItem.charges_max) : '',
+      charges_remaining: editingItem.charges_remaining != null ? String(editingItem.charges_remaining) : '',
+      recharge_type: editingItem.recharge_type || '',
+      description: editingItem.description || '',
+    }
+  }, [editingItem])
 
   const grouped = filtered.reduce<Record<string, InventoryItem[]>>((acc, item) => {
     const cat = item.category || 'gear'
@@ -170,8 +206,9 @@ export function InventoryPanel({
       </Card>
 
       {/* Weight */}
-      <div className="text-sm text-ink-500">
-        Total Weight: <span className="font-mono text-ink-900">{totalWeight.toFixed(1)} lbs</span>
+      <div className="flex items-center gap-4 text-sm text-ink-500">
+        <span>Total Weight: <span className="font-mono text-ink-900">{totalWeight.toFixed(1)} lbs</span></span>
+        <span>Attuned: <span className={`font-mono ${attunedCount >= maxAttuned ? 'text-arcane-600' : 'text-ink-900'}`}>{attunedCount}/{maxAttuned}</span></span>
       </div>
 
       {/* Filters */}
@@ -332,12 +369,17 @@ export function InventoryPanel({
                             {item.is_equipped ? 'Unequip' : 'Equip'}
                           </button>
                           <button
-                            onClick={() => onUpdateItem(item.id, { is_attuned: !item.is_attuned })}
+                            onClick={() => toggleAttune(item)}
+                            title={item.is_attuned ? 'End attunement' : `Attune (${attunedCount}/${maxAttuned} slots used)`}
                             className={`px-2 py-1 rounded text-xs cursor-pointer transition-colors ${
-                              item.is_attuned ? 'bg-arcane-200 text-arcane-700' : 'bg-parchment-200 text-ink-500'
+                              item.is_attuned
+                                ? 'bg-arcane-200 text-arcane-700'
+                                : attunedCount >= maxAttuned
+                                  ? 'bg-parchment-200 text-ink-300'
+                                  : 'bg-parchment-200 text-ink-500'
                             }`}
                           >
-                            {item.is_attuned ? 'Unattuned' : 'Attune'}
+                            {item.is_attuned ? 'Unattune' : 'Attune'}
                           </button>
                           <button
                             onClick={() => setEditingItem(item)}
@@ -383,22 +425,7 @@ export function InventoryPanel({
           open={!!editingItem}
           onClose={() => setEditingItem(null)}
           title="Edit Item"
-          initialData={{
-            name: editingItem.name,
-            category: editingItem.category,
-            quantity: editingItem.quantity,
-            weight: editingItem.weight,
-            damage: editingItem.damage || '',
-            weapon_properties: editingItem.weapon_properties || '',
-            armor_bonus: editingItem.armor_bonus != null ? String(editingItem.armor_bonus) : '',
-            ac_ability_score: editingItem.ac_ability_score || '',
-            max_ability_modifier: editingItem.max_ability_modifier != null ? String(editingItem.max_ability_modifier) : '',
-            ac_bonus: editingItem.ac_bonus != null ? String(editingItem.ac_bonus) : '',
-            charges_max: editingItem.charges_max != null ? String(editingItem.charges_max) : '',
-            charges_remaining: editingItem.charges_remaining != null ? String(editingItem.charges_remaining) : '',
-            recharge_type: editingItem.recharge_type || '',
-            description: editingItem.description || '',
-          }}
+          initialData={editInitialData}
           onSubmit={(data) => {
             onUpdateItem(editingItem.id, {
               name: data.name,

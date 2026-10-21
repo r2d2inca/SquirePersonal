@@ -71,6 +71,27 @@ const ARMOR_TABLE_ENTRIES = Object.entries(ARMOR_TABLE).sort(
   ([a], [b]) => b.length - a.length
 )
 
+/** Lower-case name with punctuation collapsed to spaces, so "Half-Plate" and "half plate" both match the table. */
+function normalizeItemName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Attunement slots: 3 for everyone; Artificers get a 4th at 10, 5th at 14, 6th at 18
+ * (Magic Item Adept / Savant / Master). Multiclass strings like "Artificer 10 / Wizard 2"
+ * use the Artificer's own level.
+ */
+export function maxAttunementSlots(character: { class: string; level: number }): number {
+  const cls = character.class.toLowerCase()
+  if (!cls.includes('artificer')) return 3
+  const m = cls.match(/artificer\s+(\d+)/)
+  const artificerLevel = m ? parseInt(m[1], 10) : character.level
+  if (artificerLevel >= 18) return 6
+  if (artificerLevel >= 14) return 5
+  if (artificerLevel >= 10) return 4
+  return 3
+}
+
 /** Ability score modifiers keyed by score name, used for custom armor AC ability selection. */
 export interface AbilityModifiers {
   strength: number
@@ -91,7 +112,7 @@ type ACEquippedItem = Pick<InventoryItem, 'name' | 'category' | 'armor_bonus' | 
  * slot and tank AC. They contribute only via `ac_bonus`.
  */
 function isBodyArmor(i: ACEquippedItem): boolean {
-  const name = i.name.toLowerCase()
+  const name = normalizeItemName(i.name)
   if (name.includes('shield')) return false
   if (ARMOR_TABLE_ENTRIES.some(([a]) => name.includes(a))) return true
   if (i.category !== 'armor') return false
@@ -102,7 +123,7 @@ function isBodyArmor(i: ACEquippedItem): boolean {
 
 /** Base AC value of a body-armor item, used to pick the best when several qualify. */
 function armorBaseValue(i: ACEquippedItem): number {
-  const name = i.name.toLowerCase()
+  const name = normalizeItemName(i.name)
   const entry = ARMOR_TABLE_ENTRIES.find(([a]) => name.includes(a))
   if (entry) return entry[1].base
   return i.armor_bonus ?? 0
@@ -120,7 +141,7 @@ export function calculateAC(
 ): number {
   // Look for armor and shields in both 'armor' category and by name matching
   const allItems = equippedItems
-  const shield = allItems.find((i) => i.name.toLowerCase().includes('shield'))
+  const shield = allItems.find((i) => normalizeItemName(i.name).includes('shield'))
   // Only true body armor occupies the armor slot; if several qualify (e.g. a stray
   // miscategorized item), the highest-base one wins so real armor is never displaced.
   const armorCandidates = allItems.filter(isBodyArmor)
@@ -136,7 +157,7 @@ export function calculateAC(
   // Determine armor type for feature checks
   let armorType: 'light' | 'medium' | 'heavy' | undefined
   if (armor) {
-    const name = armor.name.toLowerCase()
+    const name = normalizeItemName(armor.name)
     const tableEntry = ARMOR_TABLE_ENTRIES.find(([key]) => name.includes(key))
     if (tableEntry) {
       armorType = tableEntry[1].type
@@ -168,7 +189,7 @@ export function calculateAC(
   let ac: number
 
   if (armor) {
-    const name = armor.name.toLowerCase()
+    const name = normalizeItemName(armor.name)
     // Try to find in armor table (sorted longest-first for accurate matching)
     const tableEntry = ARMOR_TABLE_ENTRIES.find(([key]) => name.includes(key))
 

@@ -31,6 +31,7 @@ import { pushToast } from '@/stores/toastStore'
 import { getSpellSelectionRules } from '@/lib/spellcastingRules'
 import { getDragonData, updateDragonData, getCompanionStats } from '@/lib/dragonCompanion'
 import { refreshFeatureDescriptions } from '@/lib/featureRefresh'
+import { maxAttunementSlots } from '@/lib/calculations'
 import { getSubclassSpells, getClassChoiceData } from '@/lib/phbData'
 import { parseRaceSubrace, getRaceData, applySubrace } from '@/lib/raceData'
 import { FEAT_FIXED_SPELLS } from '@/lib/featData'
@@ -650,6 +651,7 @@ export function DashboardPage() {
           onAddItem={addItem}
           onUpdateItem={(id, updates) => updateItem({ id, updates })}
           onDeleteItem={deleteItem}
+          maxAttuned={maxAttunementSlots(character)}
           onUpdateCurrency={(currency) => handleCharacterUpdate(currency)}
         />
       )}
