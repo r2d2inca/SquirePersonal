@@ -19,6 +19,8 @@ import {
   Globe,
   Volume2,
   VolumeX,
+  ClipboardList,
+  Flag,
 } from 'lucide-react'
 import { useDmStore, type DmTabId } from '@/stores/dmStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -30,6 +32,8 @@ import { playSound } from '@/lib/sound'
 const NAV_ITEMS: { id: DmTabId; label: string; icon: typeof Crown }[] = [
   { id: 'campaigns', label: 'Campaigns', icon: Crown },
   { id: 'party', label: 'Party Overview', icon: Users },
+  { id: 'planner', label: 'Session Planner', icon: ClipboardList },
+  { id: 'encounters', label: 'Encounter Planner', icon: Flag },
   { id: 'combat', label: 'Combat Tracker', icon: Swords },
   { id: 'monsters', label: 'Monster Manual', icon: Skull },
   { id: 'npcs', label: 'Custom NPCs', icon: Ghost },

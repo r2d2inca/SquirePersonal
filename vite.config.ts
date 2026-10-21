@@ -113,6 +113,53 @@ say so clearly rather than guessing.`
         }
       })
 
+      // NPC stat block parser / generator (mirrors api/parse-stat-block.ts)
+      server.middlewares.use('/api/parse-stat-block', async (req, res) => {
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          })
+          res.end()
+          return
+        }
+        if (req.method !== 'POST') {
+          res.writeHead(405)
+          res.end('Method not allowed')
+          return
+        }
+        if (!apiKey) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }))
+          return
+        }
+        try {
+          const chunks: Buffer[] = []
+          for await (const chunk of req) chunks.push(chunk as Buffer)
+          const body = JSON.parse(Buffer.concat(chunks).toString())
+
+          const { runStatBlock, validateStatBlockRequest } = await import('./api/_lib/statBlock')
+          const validated = validateStatBlockRequest(body)
+          if (!validated.ok) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: validated.error }))
+            return
+          }
+          const Anthropic = (await import('@anthropic-ai/sdk')).default
+          const parsed = await runStatBlock(new Anthropic({ apiKey }), validated.value)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(parsed))
+        } catch (error) {
+          console.error('Stat block parse error:', error)
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            error: 'Failed to parse stat block',
+            details: error instanceof Error ? error.message : 'Unknown error',
+          }))
+        }
+      })
+
       // PDF character sheet parser endpoint
       server.middlewares.use('/api/parse-character-pdf', async (req, res) => {
         if (req.method === 'OPTIONS') {

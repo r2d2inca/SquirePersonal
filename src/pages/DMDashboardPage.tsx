@@ -19,7 +19,11 @@ import { DmSessionLogPanel } from '@/components/dm/DmSessionLogPanel'
 import { DmAIChatPanel } from '@/components/dm/DmAIChatPanel'
 import { DmCampaignHubPanel } from '@/components/dm/DmCampaignHubPanel'
 import { SharedCombatPanel } from '@/components/dm/SharedCombatPanel'
+import { SessionPlannerPanel } from '@/components/dm/SessionPlannerPanel'
+import { EncounterPlannerPanel } from '@/components/dm/EncounterPlannerPanel'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { ClipboardList, Flag } from 'lucide-react'
 
 export function DMDashboardPage() {
   const navigate = useNavigate()
@@ -134,6 +138,32 @@ export function DMDashboardPage() {
         />
       )}
 
+      {activeDmTab === 'planner' && activeCampaignId && (
+        <SessionPlannerPanel
+          campaignId={activeCampaignId}
+          userId={user!.id}
+          npcs={npcs}
+          partyCharacters={partyCharacters}
+          nextSessionNumber={dmSessions.reduce((max, s) => Math.max(max, s.session_number ?? 0), 0) + 1}
+          onLogSession={addDmSession}
+        />
+      )}
+      {activeDmTab === 'planner' && !activeCampaignId && (
+        <EmptyState icon={<ClipboardList size={48} />} title="No Campaign Selected" description="Select a campaign to plan its sessions." />
+      )}
+
+      {activeDmTab === 'encounters' && activeCampaignId && (
+        <EncounterPlannerPanel
+          campaignId={activeCampaignId}
+          userId={user!.id}
+          npcs={npcs}
+          partyCharacters={partyCharacters}
+        />
+      )}
+      {activeDmTab === 'encounters' && !activeCampaignId && (
+        <EmptyState icon={<Flag size={48} />} title="No Campaign Selected" description="Select a campaign to build encounters for it." />
+      )}
+
       {activeDmTab === 'combat' && activeCampaignId && (
         <SharedCombatPanel
           campaignId={activeCampaignId}
@@ -164,6 +194,9 @@ export function DMDashboardPage() {
           npcs={npcs}
           userId={user!.id}
           campaignId={activeCampaignId}
+          partyContext={partyCharacters.length > 0
+            ? `${partyCharacters.length} character${partyCharacters.length === 1 ? '' : 's'}, level${partyCharacters.length === 1 ? '' : 's'} ${Math.min(...partyCharacters.map((c) => c.level))}–${Math.max(...partyCharacters.map((c) => c.level))}`
+            : undefined}
           onAdd={addNpc}
           onUpdate={(id, updates) => updateNpc({ id, updates })}
           onDelete={deleteNpc}

@@ -126,6 +126,16 @@ export interface Database {
         Insert: EncounterCombatantInsert
         Update: EncounterCombatantUpdate
       }
+      encounter_templates: {
+        Row: EncounterTemplate
+        Insert: EncounterTemplateInsert
+        Update: EncounterTemplateUpdate
+      }
+      dm_session_plans: {
+        Row: DmSessionPlan
+        Insert: DmSessionPlanInsert
+        Update: DmSessionPlanUpdate
+      }
     }
   }
 }
@@ -620,6 +630,9 @@ export interface CampaignEncounter {
   grid_width: number
   grid_height: number
   map_image_url: string | null
+  /** Display name, usually copied from the template it was launched from. */
+  name: string
+  template_id: string | null
   created_at: string
   updated_at: string
 }
@@ -672,3 +685,81 @@ export interface EncounterCombatant {
 
 export type EncounterCombatantInsert = Omit<EncounterCombatant, 'id' | 'created_at' | 'updated_at'> & { id?: string }
 export type EncounterCombatantUpdate = Partial<Omit<EncounterCombatant, 'id' | 'encounter_id' | 'created_at' | 'updated_at'>>
+
+// ─── Encounter Templates (DM prep) ───
+
+export type EncounterMonsterSource = 'srd' | 'npc' | 'custom'
+
+/**
+ * One line of a saved encounter. Stats are snapshotted at add time so a
+ * template still launches if the NPC it came from is later deleted or edited.
+ */
+export interface EncounterTemplateMonster {
+  id: string
+  source: EncounterMonsterSource
+  /** SRD index or NPC id; null for ad-hoc entries. */
+  ref: string | null
+  name: string
+  cr: number
+  hp: number
+  ac: number
+  /** Added to the d20 when initiative is rolled for this creature. */
+  initiative_bonus: number
+  size: CreatureSize
+  quantity: number
+  token_color: string
+  /** Roll one initiative for the whole group instead of one per creature. */
+  group_initiative: boolean
+}
+
+export interface EncounterTemplate {
+  id: string
+  campaign_id: string
+  user_id: string
+  name: string
+  description: string
+  monsters: EncounterTemplateMonster[]
+  tactics: string
+  loot: string
+  map_image_url: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type EncounterTemplateInsert = Omit<EncounterTemplate, 'id' | 'created_at' | 'updated_at'> & { id?: string }
+export type EncounterTemplateUpdate = Partial<Omit<EncounterTemplate, 'id' | 'campaign_id' | 'user_id' | 'created_at' | 'updated_at'>>
+
+// ─── Session Plans (DM prep) ───
+
+export type SessionBeatType = 'scene' | 'read_aloud' | 'encounter' | 'npc' | 'loot' | 'note'
+
+export type SessionPlanStatus = 'planning' | 'ready' | 'running' | 'done'
+
+export interface SessionBeat {
+  id: string
+  type: SessionBeatType
+  title: string
+  body: string
+  encounter_template_id: string | null
+  npc_id: string | null
+  done: boolean
+}
+
+export interface DmSessionPlan {
+  id: string
+  campaign_id: string
+  user_id: string
+  title: string
+  session_number: number | null
+  status: SessionPlanStatus
+  planned_date: string | null
+  scheduled_session_id: string | null
+  overview: string
+  beats: SessionBeat[]
+  created_at: string
+  updated_at: string
+}
+
+export type DmSessionPlanInsert = Omit<DmSessionPlan, 'id' | 'created_at' | 'updated_at'> & { id?: string }
+export type DmSessionPlanUpdate = Partial<Omit<DmSessionPlan, 'id' | 'campaign_id' | 'user_id' | 'created_at' | 'updated_at'>>

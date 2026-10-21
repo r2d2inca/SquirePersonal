@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Crown, Users, Skull, MessageCircle, MoreHorizontal, Ghost, StickyNote, BookOpen, Compass, Swords } from 'lucide-react'
+import { Crown, Users, Skull, MessageCircle, MoreHorizontal, Ghost, StickyNote, BookOpen, Compass, Swords, ClipboardList, Flag } from 'lucide-react'
 import { useDmStore, type DmTabId } from '@/stores/dmStore'
 
 const PRIMARY_TABS: { id: DmTabId; label: string; icon: typeof Crown }[] = [
@@ -10,6 +10,8 @@ const PRIMARY_TABS: { id: DmTabId; label: string; icon: typeof Crown }[] = [
 ]
 
 const MORE_TABS: { id: DmTabId; label: string; icon: typeof Ghost }[] = [
+  { id: 'planner', label: 'Session Planner', icon: ClipboardList },
+  { id: 'encounters', label: 'Encounters', icon: Flag },
   { id: 'combat', label: 'Combat', icon: Swords },
   { id: 'npcs', label: 'NPCs', icon: Ghost },
   { id: 'notes', label: 'Notes', icon: StickyNote },

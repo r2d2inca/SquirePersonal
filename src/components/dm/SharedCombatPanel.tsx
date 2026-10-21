@@ -67,6 +67,8 @@ export function SharedCombatPanel({
       grid_width: 20,
       grid_height: 15,
       map_image_url: null,
+      name: '',
+      template_id: null,
     })
   }
 
@@ -90,6 +92,7 @@ export function SharedCombatPanel({
   }
 
   const currentCombatant = combatants.find((c) => c.id === encounter.current_turn_combatant_id)
+  const heading = encounter.name ? `Combat: ${encounter.name}` : 'Combat Tracker'
 
   function handleMoveCombatant(id: string, x: number, y: number) {
     actions.updateCombatant({ id, updates: { grid_x: x, grid_y: y } }).catch(() => {})
@@ -173,7 +176,7 @@ export function SharedCombatPanel({
   if (encounter.status === 'completed') {
     return (
       <div className="space-y-6">
-        <h2 className="font-display text-2xl text-ink-900">Combat Tracker</h2>
+        <h2 className="font-display text-2xl text-ink-900">{heading}</h2>
         <CombatSummary
           combatants={combatants}
           round={encounter.round}
@@ -189,7 +192,7 @@ export function SharedCombatPanel({
   if (encounter.status === 'setup') {
     return (
       <div className="space-y-6">
-        <h2 className="font-display text-2xl text-ink-900">Combat Tracker</h2>
+        <h2 className="font-display text-2xl text-ink-900">{heading}</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
@@ -234,7 +237,7 @@ export function SharedCombatPanel({
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl text-ink-900">Combat Tracker</h2>
+          <h2 className="font-display text-2xl text-ink-900">{heading}</h2>
           <Button size="sm" variant="danger" onClick={() => actions.updateEncounter({ id: encounter.id, updates: { status: 'setup' } })}>
             Back to Setup
           </Button>
@@ -273,7 +276,7 @@ export function SharedCombatPanel({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-2xl text-ink-900">Combat Tracker</h2>
+        <h2 className="font-display text-2xl text-ink-900">{heading}</h2>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="secondary" onClick={() => setShowLog(!showLog)}>
             <ScrollText size={14} className="mr-1" /> Log ({combatLog.length})

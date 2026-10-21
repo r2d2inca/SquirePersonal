@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Ghost, Trash2, Edit2, Search, Skull } from 'lucide-react'
+import { Plus, Ghost, Trash2, Edit2, Search, Skull, Upload, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
@@ -7,23 +7,30 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { MonsterStatBlock } from './MonsterStatBlock'
 import { NpcFormModal } from './NpcFormModal'
+import { NpcImportModal } from './NpcImportModal'
+import { downloadNpcJson, type NpcDraft } from '@/lib/npcImport'
 import type { Npc, NpcInsert, NpcUpdate } from '@/lib/types/database'
 
 interface NpcPanelProps {
   npcs: Npc[]
   userId: string
   campaignId: string | null
+  /** e.g. "4 characters, levels 3-5" — tunes AI-generated creatures. */
+  partyContext?: string
   onAdd: (npc: NpcInsert) => void
   onUpdate: (id: string, updates: NpcUpdate) => void
   onDelete: (id: string) => void
 }
 
-export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }: NpcPanelProps) {
+export function NpcPanel({ npcs, userId, campaignId, partyContext, onAdd, onUpdate, onDelete }: NpcPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingNpc, setViewingNpc] = useState<Npc | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
+  // A parsed/generated stat block waiting for the DM's review in the form.
+  const [importDraft, setImportDraft] = useState<NpcDraft | null>(null)
 
   const filtered = searchQuery
     ? npcs.filter(
@@ -39,9 +46,14 @@ export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl text-ink-900">Custom NPCs</h2>
-        <Button onClick={() => { setEditingId(null); setShowForm(true) }} size="sm">
-          <Plus size={14} className="mr-1" /> New NPC
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowImport(true)} size="sm" variant="secondary">
+            <Upload size={14} className="mr-1" /> Import / AI
+          </Button>
+          <Button onClick={() => { setEditingId(null); setImportDraft(null); setShowForm(true) }} size="sm">
+            <Plus size={14} className="mr-1" /> New NPC
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -61,8 +73,8 @@ export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }
         <EmptyState
           icon={<Ghost size={48} />}
           title="No Custom NPCs"
-          description="Create custom NPC stat blocks or save monsters from the Monster Manual."
-          action={{ label: 'Create NPC', onClick: () => setShowForm(true) }}
+          description="Build stat blocks by hand, paste or upload one to import it, have Claude design one, or save monsters from the Monster Manual."
+          action={{ label: 'Import or Generate', onClick: () => setShowImport(true) }}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -80,7 +92,14 @@ export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
-                      onClick={() => { setEditingId(npc.id); setShowForm(true) }}
+                      onClick={() => downloadNpcJson(npc)}
+                      className="p-1 text-ink-300 hover:text-ink-700 transition-colors cursor-pointer"
+                      title="Export JSON"
+                    >
+                      <Download size={14} />
+                    </button>
+                    <button
+                      onClick={() => { setEditingId(npc.id); setImportDraft(null); setShowForm(true) }}
                       className="p-1 text-ink-300 hover:text-ink-700 transition-colors cursor-pointer"
                     >
                       <Edit2 size={14} />
@@ -125,12 +144,25 @@ export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }
         message="Are you sure you want to delete this NPC? This action cannot be undone."
       />
 
+      <NpcImportModal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        partyContext={partyContext}
+        onDraft={(draft) => {
+          setShowImport(false)
+          setEditingId(null)
+          setImportDraft(draft)
+          setShowForm(true)
+        }}
+      />
+
       {/* NPC Form */}
       <NpcFormModal
-        key={editingId ?? 'new'}
+        key={editingId ?? (importDraft ? `import-${importDraft.name}` : 'new')}
         open={showForm}
-        onClose={() => { setShowForm(false); setEditingId(null) }}
+        onClose={() => { setShowForm(false); setEditingId(null); setImportDraft(null) }}
         npc={editingNpc}
+        initialValues={importDraft}
         userId={userId}
         campaignId={campaignId}
         onSubmit={(data) => {
@@ -141,6 +173,7 @@ export function NpcPanel({ npcs, userId, campaignId, onAdd, onUpdate, onDelete }
           }
           setShowForm(false)
           setEditingId(null)
+          setImportDraft(null)
         }}
       />
     </div>
