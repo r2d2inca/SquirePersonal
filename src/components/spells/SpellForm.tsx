@@ -49,6 +49,10 @@ export function SpellForm({ open, onClose, onSubmit, characterClass, maxSpellLev
   const [loadingSpells, setLoadingSpells] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [filterLevel, setFilterLevel] = useState<number | null>(null)
+  // Class list is the default where one exists; "all" opens the whole SRD so a
+  // non-caster (or anyone the campaign taught something unusual) can still add it.
+  const [listScope, setListScope] = useState<'class' | 'all'>('class')
+  const [classListEmpty, setClassListEmpty] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<FormData>({
@@ -72,18 +76,28 @@ export function SpellForm({ open, onClose, onSubmit, characterClass, maxSpellLev
     },
   })
 
-  // Load spell list when modal opens
+  // Load spell list when modal opens or the scope changes
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     setLoadingSpells(true)
-    const fetcher = characterClass
-      ? getSpellsByClass(characterClass)
-      : getAllSpells()
+    const useClassList = listScope === 'class' && !!characterClass
+    const fetcher = useClassList ? getSpellsByClass(characterClass!) : getAllSpells()
     fetcher
-      .then(setSpellList)
+      .then((list) => {
+        if (cancelled) return
+        if (useClassList && list.length === 0) {
+          // Non-caster class (Monk, Fighter...): nothing to pick from, so fall through to all spells.
+          setClassListEmpty(true)
+          setListScope('all')
+          return
+        }
+        setSpellList(list)
+      })
       .catch(console.error)
-      .finally(() => setLoadingSpells(false))
-  }, [open, characterClass])
+      .finally(() => { if (!cancelled) setLoadingSpells(false) })
+    return () => { cancelled = true }
+  }, [open, characterClass, listScope])
 
   // Focus search input when opening in search mode
   useEffect(() => {
@@ -98,6 +112,8 @@ export function SpellForm({ open, onClose, onSubmit, characterClass, maxSpellLev
       setSearchQuery('')
       setFilterLevel(null)
       setMode('search')
+      setListScope('class')
+      setClassListEmpty(false)
       reset()
     }
   }, [open, reset])
@@ -172,10 +188,41 @@ export function SpellForm({ open, onClose, onSubmit, characterClass, maxSpellLev
               ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={characterClass ? `Search ${characterClass} spells...` : 'Search all SRD spells...'}
+              placeholder={listScope === 'class' && characterClass ? `Search ${characterClass} spells...` : 'Search all SRD spells...'}
               className="w-full pl-9 pr-4 py-2 bg-parchment-50 border border-parchment-400 rounded-lg font-body text-sm focus:outline-none focus:border-gold-400"
             />
           </div>
+
+          {/* Scope: class list vs every spell */}
+          {characterClass && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {!classListEmpty && (
+                <button
+                  type="button"
+                  onClick={() => setListScope('class')}
+                  className={`px-2.5 py-1 rounded text-xs font-display uppercase cursor-pointer transition-colors ${
+                    listScope === 'class' ? 'bg-arcane-400 text-white' : 'bg-parchment-200 text-ink-500'
+                  }`}
+                >
+                  {characterClass} list
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setListScope('all')}
+                className={`px-2.5 py-1 rounded text-xs font-display uppercase cursor-pointer transition-colors ${
+                  listScope === 'all' ? 'bg-arcane-400 text-white' : 'bg-parchment-200 text-ink-500'
+                }`}
+              >
+                All spells
+              </button>
+              <span className="text-[11px] text-ink-400">
+                {classListEmpty
+                  ? `${characterClass} has no spell list, so this shows every SRD spell.`
+                  : listScope === 'all' ? 'Every SRD spell, for anything learned outside your class.' : ''}
+              </span>
+            </div>
+          )}
 
           {/* Level filter chips */}
           <div className="flex items-center gap-1.5 flex-wrap">

@@ -23,8 +23,8 @@ import {
   type SRDSpellSummary,
 } from '@/lib/dnd5e'
 import { getSpellSelectionRules } from '@/lib/spellcastingRules'
-import { getFeatsAvailableAtLevel, meetsPrerequisites, FEAT_FIXED_SPELLS, FEAT_PROFICIENCY_GRANTS, FEAT_RESOURCES, FEAT_FLAT_HP, type FeatData } from '@/lib/featData'
-import { SKILLS } from '@/lib/constants'
+import { getFeatsAvailableAtLevel, meetsPrerequisites, type FeatData } from '@/lib/featData'
+import { applyFeat } from '@/lib/applyFeat'
 import { getClassChoiceData } from '@/lib/phbData'
 import { getClassLevels, isMulticlassed, updateMulticlassData, formatClassDisplay, buildHitDiceTotal, MULTICLASS_PROFICIENCIES, type ClassLevel } from '@/lib/multiclass'
 import { CLASSES } from '@/lib/constants'
@@ -283,133 +283,13 @@ export function LevelUpWizard({ open, onClose, character, currentSpellSlots, exi
       source: character.class,
     }))
 
-    // Add selected feat and apply its ability score increase
+    // Add selected feat: ability bump, proficiencies, HP, resources and granted spells
+    // all come from applyFeat so this matches the post-creation Add Feat flow exactly.
     if (hasASI && asiMode === 'feat' && selectedFeat) {
-      let featDesc = selectedFeat.description
-      // Append chosen extras to description
-      const extras = featExtras as Record<string, unknown>
-      const notes: string[] = []
-      if (extras.skill) notes.push(`Chosen skill: ${extras.skill}`)
-      if (extras.expertise) notes.push(`Expertise: ${extras.expertise}`)
-      if ((extras.skills as string[] | undefined)?.length) notes.push(`Chosen: ${(extras.skills as string[]).join(', ')}`)
-      if (extras.savingThrow) notes.push(`Saving throw: ${extras.savingThrow}`)
-      if (extras.damageType) notes.push(`Chosen damage type: ${extras.damageType}`)
-      if ((extras.damageTypes as string[] | undefined)?.length) notes.push(`Resistances: ${(extras.damageTypes as string[]).join(', ')}`)
-      if (extras.spellPick) notes.push(`Chosen spell: ${extras.spellPick}`)
-      if ((extras.spellPicks as string[] | undefined)?.length) notes.push(`Ritual spells: ${(extras.spellPicks as string[]).join(', ')}`)
-      if ((extras.tools as string[] | undefined)?.length) notes.push(`Tools: ${(extras.tools as string[]).join(', ')}`)
-      if ((extras.instruments as string[] | undefined)?.length) notes.push(`Instruments: ${(extras.instruments as string[]).join(', ')}`)
-      if (extras.miAbility) notes.push(`Spellcasting ability: ${extras.miAbility}`)
-      if (notes.length > 0) featDesc += '\n\n' + notes.join('. ') + '.'
-
-      // Resource tracking for feats
-      const resource = FEAT_RESOURCES[selectedFeat.name]
-      const featFeature: Feature = { name: selectedFeat.name, description: featDesc, source: 'Feat' }
-      if (resource) {
-        const maxUses = resource.usesMax === 'proficiency' ? proficiencyBonus(newLevel) : resource.usesMax
-        featFeature.usesMax = maxUses
-        featFeature.usesRemaining = maxUses
-        featFeature.rechargeOn = resource.rechargeOn
-      }
-      newFeatures.push(featFeature)
-
-      // Apply feat's +1 ability score increase
-      // Resilient: the ability score increase is linked to the saving throw choice
-      const effectiveFeatAbility = selectedFeat.name === 'Resilient' && extras.savingThrow
-        ? extras.savingThrow as string
-        : featAbility
-      if (selectedFeat.abilityScoreIncrease && effectiveFeatAbility) {
-        const currentScore = character[effectiveFeatAbility as keyof Character] as number
-        const maxScore = selectedFeat.maxAbilityScore ?? 20
-        ;(updates as Record<string, unknown>)[effectiveFeatAbility] = Math.min(maxScore, currentScore + 1)
-      }
-
-      // Apply feat proficiency changes
-      const currentProfs = updates.proficiencies ?? { ...character.proficiencies }
-      let profsChanged = false
-      // Skill from feats — Keen Mind/Observant upgrade to expertise if already proficient
-      if (extras.skill) {
-        const skillLower = (extras.skill as string).toLowerCase()
-        const isKeenMindOrObservant = selectedFeat.name === 'Keen Mind' || selectedFeat.name === 'Observant'
-        if (isKeenMindOrObservant && currentProfs.skills.includes(skillLower)) {
-          if (!currentProfs.expertise) currentProfs.expertise = []
-          if (!currentProfs.expertise.includes(skillLower)) { currentProfs.expertise = [...currentProfs.expertise, skillLower]; profsChanged = true }
-        } else if (!currentProfs.skills.includes(skillLower)) {
-          currentProfs.skills = [...currentProfs.skills, skillLower]; profsChanged = true
-        }
-      }
-      if (extras.expertise) {
-        if (!currentProfs.expertise) currentProfs.expertise = []
-        const expLower = (extras.expertise as string).toLowerCase()
-        if (!currentProfs.expertise.includes(expLower)) { currentProfs.expertise = [...currentProfs.expertise, expLower]; profsChanged = true }
-      }
-      // Skilled feat: 3 skills/tools
-      if ((extras.skills as string[] | undefined)?.length) {
-        for (const pick of extras.skills as string[]) {
-          const isSkill = SKILLS.some(s => s.name === pick)
-          if (isSkill) {
-            const lower = pick.toLowerCase()
-            if (!currentProfs.skills.includes(lower)) { currentProfs.skills = [...currentProfs.skills, lower]; profsChanged = true }
-          } else {
-            if (!currentProfs.tools.includes(pick)) { currentProfs.tools = [...currentProfs.tools, pick]; profsChanged = true }
-          }
-        }
-      }
-      if (extras.savingThrow) {
-        const stLower = (extras.savingThrow as string).toLowerCase()
-        if (!currentProfs.savingThrows.includes(stLower)) { currentProfs.savingThrows = [...currentProfs.savingThrows, stLower]; profsChanged = true }
-      }
-      if ((extras.tools as string[] | undefined)?.length) {
-        for (const t of extras.tools as string[]) {
-          if (!currentProfs.tools.includes(t)) { currentProfs.tools = [...currentProfs.tools, t]; profsChanged = true }
-        }
-      }
-      if ((extras.instruments as string[] | undefined)?.length) {
-        for (const t of extras.instruments as string[]) {
-          if (!currentProfs.tools.includes(t)) { currentProfs.tools = [...currentProfs.tools, t]; profsChanged = true }
-        }
-      }
-      // Proficiency grants from feat name
-      const grants = FEAT_PROFICIENCY_GRANTS[selectedFeat.name]
-      if (grants) {
-        if (grants.tools) grants.tools.forEach(t => { if (!currentProfs.tools.includes(t)) { currentProfs.tools = [...currentProfs.tools, t]; profsChanged = true } })
-        if (grants.armor) grants.armor.forEach(a => { if (!currentProfs.armor.includes(a)) { currentProfs.armor = [...currentProfs.armor, a]; profsChanged = true } })
-        if (grants.weapons) grants.weapons.forEach(w => { if (!currentProfs.weapons.includes(w)) { currentProfs.weapons = [...currentProfs.weapons, w]; profsChanged = true } })
-        if (grants.allSkills) { SKILLS.forEach(s => { const lower = s.name.toLowerCase(); if (!currentProfs.skills.includes(lower)) { currentProfs.skills = [...currentProfs.skills, lower]; profsChanged = true } }) }
-      }
-      if (profsChanged) updates.proficiencies = currentProfs
-
-      // Flat HP bonus from feats (e.g. Boon of Fortitude +40)
-      const flatHp = FEAT_FLAT_HP[selectedFeat.name]
-      if (flatHp) {
-        updates.max_hp = (updates.max_hp ?? character.max_hp) + flatHp
-        updates.current_hp = (updates.current_hp ?? character.current_hp) + flatHp
-      }
-
-      // Feat-granted spells
-      const featSpellSlugs: { slug: string; source: string }[] = []
-      if (FEAT_FIXED_SPELLS[selectedFeat.name]) {
-        for (const slug of FEAT_FIXED_SPELLS[selectedFeat.name]) {
-          featSpellSlugs.push({ slug, source: `Feat (${selectedFeat.name})` })
-        }
-      }
-      if (extras.spellPick) featSpellSlugs.push({ slug: extras.spellPick as string, source: `Feat (${selectedFeat.name})` })
-      if ((extras.spellPicks as string[] | undefined)?.length) {
-        for (const slug of extras.spellPicks as string[]) {
-          featSpellSlugs.push({ slug, source: `Feat (${selectedFeat.name})` })
-        }
-      }
-      // Magic Initiate cantrips + spell
-      if ((extras.miCantrips as string[] | undefined)?.length) {
-        for (const slug of extras.miCantrips as string[]) {
-          featSpellSlugs.push({ slug, source: `Feat (${selectedFeat.name})` })
-        }
-      }
-      if (extras.miSpell) featSpellSlugs.push({ slug: extras.miSpell as string, source: `Feat (${selectedFeat.name})` })
-      // Feat spell slugs will be resolved below alongside class spells
-      for (const fss of featSpellSlugs) {
-        pendingFeatSpells.push(fss)
-      }
+      const applied = applyFeat(character, selectedFeat, { featAbility, extras: featExtras }, newLevel, updates)
+      Object.assign(updates, applied.updates)
+      newFeatures.push(applied.feature)
+      pendingFeatSpells.push(...applied.spellSlugs)
     }
 
     // Dragon-Rider: save Patron's Gift and Signature Weapon tier choices

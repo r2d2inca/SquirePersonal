@@ -32,6 +32,7 @@ import { getSpellSelectionRules } from '@/lib/spellcastingRules'
 import { getDragonData, updateDragonData, getCompanionStats } from '@/lib/dragonCompanion'
 import { refreshFeatureDescriptions } from '@/lib/featureRefresh'
 import { maxAttunementSlots } from '@/lib/calculations'
+import type { SpellRow } from '@/lib/applyFeat'
 import { getSubclassSpells, getClassChoiceData } from '@/lib/phbData'
 import { parseRaceSubrace, getRaceData, applySubrace } from '@/lib/raceData'
 import { FEAT_FIXED_SPELLS } from '@/lib/featData'
@@ -393,6 +394,15 @@ export function DashboardPage() {
     }
   }
 
+  // Feats picked up outside of level-up (campaign rewards, DM grants).
+  async function handleAddFeat(updates: CharacterUpdate, newSpells: SpellRow[]) {
+    if (!character) return
+    await updateCharacter({ id: character.id, updates })
+    for (const spell of newSpells) {
+      await addSpell({ character_id: character.id, ...spell, is_prepared: true })
+    }
+  }
+
   async function handleLevelUp(
     characterUpdates: CharacterUpdate,
     newSpellSlots: { level: number; total: number }[],
@@ -573,6 +583,7 @@ export function DashboardPage() {
           onShortRest={() => setRestType('short')}
           onLongRest={() => setRestType('long')}
           onDeleteCharacter={() => updateCharacter({ id: character.id, updates: { is_active: false } })}
+          onAddFeat={handleAddFeat}
           spells={spells}
           spellSlots={spellSlots}
           items={items}
@@ -633,6 +644,13 @@ export function DashboardPage() {
           onExpendSlot={expendSlot}
           onRestoreSlot={restoreSlot}
           onLongRest={longRest}
+          abilityScores={{
+            intelligence: character.intelligence,
+            wisdom: character.wisdom,
+            charisma: character.charisma,
+          }}
+          onUpdateCharacter={(updates) => updateCharacter({ id: character.id, updates })}
+          onSetSlots={(slots) => upsertSlots(slots.map((s) => ({ character_id: character.id, slot_level: s.level, total: s.total, expended: 0 })))}
         />
         )
       })()}

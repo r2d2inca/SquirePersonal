@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Moon, Coffee, ArrowUp, Trash2, Swords, Sparkles, User } from 'lucide-react'
+import { Moon, Coffee, ArrowUp, Trash2, Swords, Sparkles, User, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { playSound } from '@/lib/sound'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -22,6 +22,8 @@ import { ConcentrationPrompt } from './ConcentrationPrompt'
 import { DeathSaves } from './DeathSaves'
 import { ClassChoices } from './ClassChoices'
 import { FeaturesTraits } from './FeaturesTraits'
+import { AddFeatModal } from './AddFeatModal'
+import type { SpellRow } from '@/lib/applyFeat'
 import { ProficiencyDisplay } from './ProficiencyDisplay'
 import { PersonalitySection } from './PersonalitySection'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -48,6 +50,8 @@ interface CharacterSheetProps {
   effects?: ActiveEffect[]
   onAddEffect?: (effect: ActiveEffectInsert) => void
   onRemoveEffect?: (id: string) => void
+  /** Post-creation feat: merged character update plus any spells the feat grants. */
+  onAddFeat?: (updates: CharacterUpdate, spells: SpellRow[]) => Promise<void> | void
 }
 
 const TABS: { id: SheetTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
@@ -56,10 +60,22 @@ const TABS: { id: SheetTab; label: string; shortLabel: string; icon: React.React
   { id: 'personality', label: 'Personality', shortLabel: 'Personal', icon: <User size={14} /> },
 ]
 
-export function CharacterSheet({ character, onUpdate, onLevelUp, onSubclassChange, onSubclassRemove, onShortRest, onLongRest, onDeleteCharacter, onExpendSlot, spells = [], spellSlots = [], items = [], effects = [], onAddEffect, onRemoveEffect }: CharacterSheetProps) {
+export function CharacterSheet({ character, onUpdate, onLevelUp, onSubclassChange, onSubclassRemove, onShortRest, onLongRest, onDeleteCharacter, onExpendSlot, spells = [], spellSlots = [], items = [], effects = [], onAddEffect, onRemoveEffect, onAddFeat }: CharacterSheetProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState<SheetTab>('stats')
   const [concDamage, setConcDamage] = useState<number | null>(null)
+  const [showAddFeat, setShowAddFeat] = useState(false)
+  const [removeFeatIndex, setRemoveFeatIndex] = useState<number | null>(null)
+
+  const feats = character.features.filter((f) => f.source === 'Feat')
+  const featToRemove = removeFeatIndex != null ? feats[removeFeatIndex] : null
+
+  function removeFeat(index: number) {
+    const target = feats[index]
+    if (!target) return
+    // Remove by identity so two repeatable feats with the same name don't both vanish.
+    onUpdate({ features: character.features.filter((f) => f !== target) })
+  }
 
   const concentrationEffect = effects.find((e) => e.is_concentration)
 
@@ -242,19 +258,65 @@ export function CharacterSheet({ character, onUpdate, onLevelUp, onSubclassChang
           {/* Dragon-Rider: Signature Weapon + Patron's Gifts */}
           <DragonRiderCustomFeatures character={character} onUpdate={onUpdate} />
 
-          {character.features.some(f => f.source === 'Feat') && (
-            <Card>
-              <SectionHeader>Feats</SectionHeader>
+          <Card>
+            <SectionHeader
+              action={onAddFeat ? (
+                <Button variant="ghost" size="sm" onClick={() => setShowAddFeat(true)}>
+                  <Plus size={14} className="mr-1" /> Add Feat
+                </Button>
+              ) : undefined}
+            >
+              Feats
+            </SectionHeader>
+            {feats.length === 0 ? (
+              <p className="text-sm text-ink-300 text-center py-4">
+                No feats yet. {onAddFeat ? 'Add one your character picked up in play, or at an ASI level.' : ''}
+              </p>
+            ) : (
               <div className="space-y-2">
-                {character.features.filter(f => f.source === 'Feat').map((feat, i) => (
-                  <div key={i} className="border border-parchment-300 rounded-lg p-3">
-                    <div className="font-body font-semibold text-ink-900">{feat.name}</div>
+                {feats.map((feat, i) => (
+                  <div key={`${feat.name}-${i}`} className="border border-parchment-300 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-body font-semibold text-ink-900">{feat.name}</div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {feat.usesMax !== undefined && (
+                          <span className="font-mono text-xs text-ink-500">{feat.usesRemaining}/{feat.usesMax}</span>
+                        )}
+                        {onAddFeat && (
+                          <button
+                            onClick={() => setRemoveFeatIndex(i)}
+                            className="p-1 text-ink-300 hover:text-danger transition-colors cursor-pointer"
+                            title="Remove feat"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <p className="text-sm text-ink-700 whitespace-pre-wrap mt-1">{feat.description}</p>
                   </div>
                 ))}
               </div>
-            </Card>
+            )}
+          </Card>
+
+          {onAddFeat && (
+            <AddFeatModal
+              open={showAddFeat}
+              onClose={() => setShowAddFeat(false)}
+              character={character}
+              onAdd={onAddFeat}
+            />
           )}
+
+          <ConfirmDialog
+            open={removeFeatIndex != null}
+            onClose={() => setRemoveFeatIndex(null)}
+            onConfirm={() => { if (removeFeatIndex != null) removeFeat(removeFeatIndex); setRemoveFeatIndex(null) }}
+            title="Remove Feat"
+            message={`Remove ${featToRemove?.name ?? 'this feat'}? Ability score bumps, proficiencies and spells it granted stay on the sheet — adjust those by hand if the feat is truly gone.`}
+            confirmLabel="Remove"
+          />
         </div>
       )}
 

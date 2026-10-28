@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Filter, ScrollText, Target, Wand2 } from 'lucide-react'
+import { Plus, Filter, ScrollText, Target, Wand2, Settings2 } from 'lucide-react'
+import { abilityModifier, proficiencyBonus } from '@/lib/calculations'
 import { SpellSlotTracker } from './SpellSlotTracker'
 import { SpellCard } from './SpellCard'
 import { SpellForm } from './SpellForm'
@@ -9,7 +10,7 @@ import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Divider } from '@/components/ui/Divider'
 import { Badge } from '@/components/ui/Badge'
-import type { Spell, SpellSlot, SpellInsert } from '@/lib/types/database'
+import type { Spell, SpellSlot, SpellInsert, CharacterUpdate } from '@/lib/types/database'
 
 interface SpellsPanelProps {
   spells: Spell[]
@@ -27,6 +28,11 @@ interface SpellsPanelProps {
   onExpendSlot: (slotId: string) => void
   onRestoreSlot: (slotId: string) => void
   onLongRest: () => void
+  /** Needed to let a non-caster pick a spellcasting ability and get a DC/attack bonus. */
+  abilityScores?: { intelligence: number; wisdom: number; charisma: number }
+  onUpdateCharacter?: (updates: CharacterUpdate) => void
+  /** Manual slot setup for characters whose class table gives them none. */
+  onSetSlots?: (slots: { level: number; total: number }[]) => void
 }
 
 export function SpellsPanel({
@@ -45,8 +51,38 @@ export function SpellsPanel({
   onExpendSlot,
   onRestoreSlot,
   onLongRest,
+  abilityScores,
+  onUpdateCharacter,
+  onSetSlots,
 }: SpellsPanelProps) {
   const [showForm, setShowForm] = useState(false)
+  const [showSetup, setShowSetup] = useState(false)
+  const [setupAbility, setSetupAbility] = useState<'intelligence' | 'wisdom' | 'charisma'>('wisdom')
+  const [slotLevel, setSlotLevel] = useState('1')
+  const [slotCount, setSlotCount] = useState('1')
+
+  const canSetup = !!abilityScores && !!onUpdateCharacter
+  const isNonCaster = spellSaveDC == null && !spellcastingAbility
+
+  function applySetup() {
+    if (!abilityScores || !onUpdateCharacter) return
+    const mod = abilityModifier(abilityScores[setupAbility])
+    const pb = proficiencyBonus(characterLevel ?? 1)
+    onUpdateCharacter({
+      spellcasting_ability: setupAbility,
+      spell_save_dc: 8 + pb + mod,
+      spell_attack_bonus: pb + mod,
+    })
+    setShowSetup(false)
+  }
+
+  function addSlots() {
+    if (!onSetSlots) return
+    const level = Math.min(9, Math.max(1, parseInt(slotLevel) || 1))
+    const total = Math.min(9, Math.max(1, parseInt(slotCount) || 1))
+    const existing = spellSlots.find((s) => s.slot_level === level)
+    onSetSlots([{ level, total: (existing?.total ?? 0) + total }])
+  }
   const [filterLevel, setFilterLevel] = useState<number | null>(null)
   const [showPreparedOnly, setShowPreparedOnly] = useState(false)
 
@@ -91,6 +127,45 @@ export function SpellsPanel({
         </Badge>
       </div>
 
+      {/* Non-caster setup: a Monk who learned a spell from the campaign still needs a DC */}
+      {isNonCaster && canSetup && (
+        <Card hover={false}>
+          {showSetup ? (
+            <div className="space-y-3">
+              <p className="text-sm text-ink-700">Pick the ability your character casts with. Save DC and attack bonus follow from it and your proficiency bonus.</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {(['intelligence', 'wisdom', 'charisma'] as const).map((ab) => (
+                  <button
+                    key={ab}
+                    onClick={() => setSetupAbility(ab)}
+                    className={`px-3 py-1.5 rounded text-xs font-display uppercase cursor-pointer transition-colors ${
+                      setupAbility === ab ? 'bg-arcane-400 text-white' : 'bg-parchment-200 text-ink-500'
+                    }`}
+                  >
+                    {ab} ({abilityModifier(abilityScores![ab]) >= 0 ? '+' : ''}{abilityModifier(abilityScores![ab])})
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={applySetup}>
+                  Set DC {8 + proficiencyBonus(characterLevel ?? 1) + abilityModifier(abilityScores![setupAbility])}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowSetup(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-ink-500">
+                {characterClass ?? 'This class'} doesn't cast by default. If the campaign taught you magic, add spells freely and set a spellcasting ability for your save DC.
+              </p>
+              <Button size="sm" variant="secondary" onClick={() => setShowSetup(true)}>
+                <Settings2 size={14} className="mr-1" /> Set Spellcasting Ability
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Spellcasting Stats */}
       {spellSaveDC != null && (
         <Card>
@@ -128,6 +203,19 @@ export function SpellsPanel({
             onLongRest={onLongRest}
           />
         </Card>
+      )}
+
+      {/* Manual slots for classes with no slot table (DM-granted casting) */}
+      {onSetSlots && spellSlots.length === 0 && (
+        <div className="flex items-center gap-2 flex-wrap text-xs text-ink-500">
+          <span>No spell slots.</span>
+          <span>Add</span>
+          <input type="number" min={1} max={9} value={slotCount} onChange={(e) => setSlotCount(e.target.value)} className="w-12 px-2 py-1 bg-parchment-50 border border-parchment-400 rounded font-mono text-xs text-ink-900 text-center" aria-label="Number of slots" />
+          <span>slot(s) of level</span>
+          <input type="number" min={1} max={9} value={slotLevel} onChange={(e) => setSlotLevel(e.target.value)} className="w-12 px-2 py-1 bg-parchment-50 border border-parchment-400 rounded font-mono text-xs text-ink-900 text-center" aria-label="Slot level" />
+          <Button size="sm" variant="secondary" onClick={addSlots}>Add Slots</Button>
+          <span className="text-ink-300">Only if your DM gave you slots; feats like Magic Initiate cast without them.</span>
+        </div>
       )}
 
       {/* Filters */}
