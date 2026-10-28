@@ -1347,6 +1347,31 @@ const CLASS_DATA_2024: Record<string, ClassData2024> = {
         'Once you use this feature, you can\'t use it again until you finish a Long Rest.',
       ] },
       { index: 'monk-subclass', name: 'Monk Subclass', level: 3, description: ['You gain a Monk subclass of your choice. A subclass is a specialization that grants you features at certain Monk levels. For the rest of your career, you gain each of your subclass\'s features that are of your Monk level or lower.'], hasChoice: true },
+      // Level-3 subclass features. Subclasses with more than one feature at this level use
+      // one block per feature, since extraction returns a single feature per block.
+      { index: 'monk-subclass-feature-3', name: 'Subclass Feature', level: 3, description: [
+        'You gain a feature from your Monk subclass.',
+        '',
+        'Open Hand — Open Hand Technique: Whenever you hit a creature with an attack granted by your Flurry of Blows, you can impose one of the following effects on that target. Addle: the target can\'t make Opportunity Attacks until the start of its next turn. Push: the target must succeed on a Strength saving throw or be pushed up to 15 feet away from you. Topple: the target must succeed on a Dexterity saving throw or have the Prone condition.',
+        '',
+        'Shadow — Shadow Arts: You have learned to draw on the power of the Shadowfell. Darkness: you can expend 1 Focus Point to cast the Darkness spell without spell components; you can see within the spell\'s area when you cast it this way, and at the start of each of your turns you can move its area to a space within 60 feet of yourself. Darkvision: you gain Darkvision with a range of 60 feet, or your existing Darkvision\'s range increases by 60 feet. Shadowy Figments: you know the Minor Illusion spell; Wisdom is your spellcasting ability for it.',
+        '',
+        'Elements — Elemental Attunement: At the start of your turn, you can expend 1 Focus Point to imbue yourself with elemental energy for 10 minutes or until you have the Incapacitated condition. You gain the following benefits for the duration. Reach: when you make an Unarmed Strike, your reach is 10 feet greater than normal, as your attacks are carried by the elements. Elemental Strikes: whenever you hit with your Unarmed Strike, you can cause it to deal your choice of Acid, Cold, Fire, Lightning, or Thunder damage rather than its normal damage type. When you deal one of these types with it, you can also force the target to make a Strength saving throw; on a failed save, you can move the target up to 10 feet toward or away from you as elemental energy swirls around it.',
+        '',
+        'Mercy — Hand of Harm: Once per turn when you hit a creature with an Unarmed Strike, you can expend 1 Focus Point to deal extra Necrotic damage equal to one roll of your Martial Arts die plus your Wisdom modifier.',
+      ] },
+      { index: 'monk-subclass-feature-3b', name: 'Subclass Feature', level: 3, description: [
+        'You gain a feature from your Monk subclass.',
+        '',
+        'Elements — Manipulate Elements: You know the Elementalism spell. Wisdom is your spellcasting ability for it.',
+        '',
+        'Mercy — Hand of Healing: As a Magic action, you can expend 1 Focus Point to touch a creature and restore a number of Hit Points equal to a roll of your Martial Arts die plus your Wisdom modifier. When you use your Flurry of Blows, you can replace one of the Unarmed Strikes with a use of this feature without expending a Focus Point for the healing.',
+      ] },
+      { index: 'monk-subclass-feature-3c', name: 'Subclass Feature', level: 3, description: [
+        'You gain a feature from your Monk subclass.',
+        '',
+        'Mercy — Implements of Mercy: You gain proficiency in the Insight and Medicine skills and proficiency with the Herbalism Kit.',
+      ] },
       { index: 'monk-deflect-attacks', name: 'Deflect Attacks', level: 3, description: [
         'You can use your Reaction to deflect melee and ranged attacks against you that deal Bludgeoning, Piercing, or Slashing damage. When you do so, the total damage you take from the attack is reduced by 1d10 plus your Dexterity modifier plus your Monk level.',
         'If you reduce the damage to 0 and the attack was a ranged attack, you can spend 1 Focus Point to redirect the attack. When you do, you make a ranged attack (range 20/60) using the deflected projectile or weapon. The attack uses your Martial Arts die for damage.',
