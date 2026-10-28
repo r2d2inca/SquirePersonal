@@ -36,6 +36,10 @@ export function extractSubclassFeature(fullDesc: string, subclass: string): { na
   // the trailing one (e.g. "Peace Domain" -> "Peace —", "Life Domain" -> "Life —").
   const firstMatch = subclass.match(/^(\w+)/i)
   if (firstMatch) searchTerms.push(firstMatch[1])
+  // Strip a trailing class-flavour word so "Wild Magic Sorcery" -> "Wild Magic" and
+  // "Great Old One Patron" -> "Great Old One" match their multi-word block keys.
+  const stripped = subclass.replace(/\s+(Sorcery|Patron|Domain|Circle|Oath|School)$/i, '').trim()
+  if (stripped && stripped !== subclass) searchTerms.push(stripped)
 
   for (const line of lines) {
     const matches = searchTerms.some(term =>

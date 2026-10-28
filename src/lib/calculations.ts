@@ -176,6 +176,7 @@ export function calculateAC(
       dexMod,
       conMod: conMod ?? 0,
       wisMod: wisMod ?? 0,
+      chaMod: abilityMods?.charisma,
       hasArmor: !!armor,
       hasShield: !!shield,
       armorType,

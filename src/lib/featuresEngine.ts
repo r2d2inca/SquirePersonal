@@ -50,6 +50,7 @@ interface AcContext {
   dexMod: number
   conMod: number
   wisMod: number
+  chaMod?: number
   hasArmor: boolean
   hasShield: boolean
   armorType?: 'light' | 'medium' | 'heavy'
@@ -88,9 +89,12 @@ export function computeAcOverride(features: Feature[], ctx: AcContext): number |
     }
   }
 
-  // Draconic Resilience (Sorcerer): 13 + DEX (no armor)
-  if (hasFeature(features, 'Draconic Resilience')) {
-    const ac = 13 + ctx.dexMod
+  // Draconic Resilience (Sorcerer): 2024 text is 10 + DEX + CHA; the 2014 version was 13 + DEX.
+  // Tell them apart by whether the stored description mentions Charisma.
+  const draconic = features.find(f => f.name.toLowerCase() === 'draconic resilience')
+  if (draconic) {
+    const is2024 = /charisma/i.test(draconic.description ?? '')
+    const ac = is2024 ? 10 + ctx.dexMod + (ctx.chaMod ?? 0) : 13 + ctx.dexMod
     if (bestAc === null || ac > bestAc) bestAc = ac
   }
 
