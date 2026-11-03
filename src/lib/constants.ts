@@ -53,7 +53,7 @@ export const RACES = [
 export const BACKGROUNDS = [
   'Acolyte', 'Artisan', 'Charlatan', 'Criminal', 'Entertainer', 'Farmer',
   'Guard', 'Guide', 'Hermit', 'Merchant', 'Noble', 'Sage',
-  'Sailor', 'Scribe', 'Soldier', 'Wayfarer',
+  'Sailor', 'Scribe', 'Soldier', 'Spellfire Initiate', 'Wayfarer',
 ] as const
 
 export const STANDARD_LANGUAGES = [

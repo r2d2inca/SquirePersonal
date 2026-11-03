@@ -195,6 +195,21 @@ export function FeatExtrasUI({ featName, extras, onExtrasChange, existingSkills 
     }
   }
 
+  // Spellfire Spark — spellcasting ability for Sacred Flame
+  if (featName === 'Spellfire Spark') {
+    return (
+      <div className="mt-2">
+        <label className="block text-xs font-display uppercase text-ink-500 mb-1">Spellcasting Ability for Sacred Flame</label>
+        <select value={extras.miAbility ?? 'charisma'} onChange={e => updateExtras({ miAbility: e.target.value })} className={selectClass}>
+          <option value="intelligence">Intelligence</option>
+          <option value="wisdom">Wisdom</option>
+          <option value="charisma">Charisma</option>
+        </select>
+        <p className="text-xs text-ink-400 mt-1">You can cast Sacred Flame as a Bonus Action {proficiencyBonus} times per Long Rest.</p>
+      </div>
+    )
+  }
+
   // Boon of Energy Resistance — choose 2 damage types
   if (featName === 'Boon of Energy Resistance') {
     const picks = extras.damageTypes ?? []

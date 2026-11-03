@@ -52,6 +52,7 @@ export function AddFeatModal({ open, onClose, character, onAdd }: AddFeatModalPr
     armorProficiencies: character.proficiencies?.armor ?? [],
     hasSpellcasting: !!character.spellcasting_ability,
     hasFightingStyle: character.features.some((f) => f.name.toLowerCase().includes('fighting style')),
+    featNames: character.features.filter((f) => f.source === 'Feat').map((f) => f.name),
   }
   const hasFightingStyle = prereqContext.hasFightingStyle
   const levelPool = new Set(getFeatsAvailableAtLevel(character.level, hasFightingStyle).map((f) => f.name))

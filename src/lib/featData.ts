@@ -73,6 +73,11 @@ export const ORIGIN_FEATS: FeatData[] = [
     description: 'Enhanced Unarmed Strike. When you hit with your Unarmed Strike and deal damage, you can deal Bludgeoning damage equal to 1d4 plus your Strength modifier instead of the normal damage of an Unarmed Strike.\n\nDamage Rerolls. Whenever you roll a damage die for your Unarmed Strike, you can reroll the die if it rolls a 1, and you must use the new roll.\n\nImprovised Weaponry. You have proficiency with improvised weapons.\n\nPush. When you hit a creature with an Unarmed Strike as part of the Attack action on your turn, you can deal damage to the target and also push it 5 feet away from you. You can use this benefit only once per turn.',
   },
   {
+    name: 'Spellfire Spark',
+    category: 'origin',
+    description: 'Magic Absorption. Once per turn, when you take damage from a spell or magical effect, you can reduce that damage by 1d4. You can\'t use this benefit while you have the Incapacitated condition.\n\nSpellfire Flame. You know the Sacred Flame cantrip. Intelligence, Wisdom, or Charisma is your spellcasting ability for it (choose when you select this feat). You can also cast Sacred Flame as a Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.',
+  },
+  {
     name: 'Tough',
     category: 'origin',
     description: 'Your Hit Point maximum increases by an amount equal to twice your character level when you gain this feat. Whenever you gain a character level thereafter, your Hit Point maximum increases by an additional 2 Hit Points.',
@@ -397,6 +402,14 @@ export const GENERAL_FEATS: FeatData[] = [
     maxAbilityScore: 20,
   },
   {
+    name: 'Spellfire Adept',
+    category: 'general',
+    prerequisite: 'Level 4+, Spellfire Spark Feat or Spellcasting or Pact Magic Feature',
+    description: 'Ability Score Increase. Increase your Intelligence, Wisdom, or Charisma score by 1, to a maximum of 20.\n\nFueled Spellfire. Once per turn, when a spell you cast deals Radiant damage, you can expend up to two of your Hit Point Dice, roll them, and add the total to one of that spell\'s damage rolls.\n\nSearing Spellfire. Your Radiant damage rolls ignore Resistance to Radiant damage.',
+    abilityScoreIncrease: 'Increase your Intelligence, Wisdom, or Charisma by 1, to a maximum of 20.',
+    maxAbilityScore: 20,
+  },
+  {
     name: 'Telekinetic',
     category: 'general',
     prerequisite: 'Level 4+',
@@ -468,6 +481,7 @@ export const EPIC_BOON_FEATS: FeatData[] = [
 export const FEAT_FIXED_SPELLS: Record<string, string[]> = {
   'Fey Touched': ['misty-step'],
   'Shadow Touched': ['invisibility'],
+  'Spellfire Spark': ['sacred-flame'],
   'Telekinetic': ['mage-hand'],
   'Telepathic': ['detect-thoughts'],
 }
@@ -486,6 +500,7 @@ export const FEAT_PROFICIENCY_GRANTS: Record<string, { tools?: string[]; armor?:
 /** Feats that have resource tracking (uses per rest) */
 export const FEAT_RESOURCES: Record<string, { usesMax: number | 'proficiency'; rechargeOn: 'short_rest' | 'long_rest' }> = {
   'Lucky': { usesMax: 'proficiency', rechargeOn: 'long_rest' },
+  'Spellfire Spark': { usesMax: 'proficiency', rechargeOn: 'long_rest' },
   'Boon of Fate': { usesMax: 1, rechargeOn: 'short_rest' },
   'Boon of Combat Prowess': { usesMax: 1, rechargeOn: 'short_rest' },
   'Boon of Recovery': { usesMax: 10, rechargeOn: 'long_rest' },
@@ -531,6 +546,8 @@ export interface PrerequisiteContext {
   weaponProficiencies?: string[]
   hasSpellcasting?: boolean
   hasFightingStyle?: boolean
+  /** Names of feats the character already has (for "X Feat or ..." prerequisites). */
+  featNames?: string[]
 }
 
 const ABILITY_NAMES = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const
@@ -565,9 +582,11 @@ export function meetsPrerequisites(feat: FeatData, context: PrerequisiteContext)
     if (!context.armorProficiencies?.some(a => a.toLowerCase().includes('shield'))) return false
   }
 
-  // Check spellcasting
+  // Check spellcasting. A prerequisite like "Spellfire Spark Feat or Spellcasting or
+  // Pact Magic Feature" is satisfied by either the named feat or a spellcasting feature.
   if (prereq.includes('spellcasting or pact magic feature') || prereq.includes('spellcasting feature')) {
-    if (!context.hasSpellcasting) return false
+    const ownedFeatSatisfies = (context.featNames ?? []).some(name => prereq.includes(`${name.toLowerCase()} feat`))
+    if (!context.hasSpellcasting && !ownedFeatSatisfies) return false
   }
 
   // Check fighting style

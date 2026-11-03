@@ -103,6 +103,7 @@ export function CharacterCreatePage() {
   const [selectedClassSkills, setSelectedClassSkills] = useState<string[]>([])
   const [selectedRaceSkills, setSelectedRaceSkills] = useState<string[]>([])
   const [skilledFeatPicks, setSkilledFeatPicks] = useState<string[]>([])
+  const [bgFeatAbility, setBgFeatAbility] = useState<string>('charisma')  // Spellfire Spark: Sacred Flame ability
 
   // Languages
   const [extraLanguages, setExtraLanguages] = useState<string[]>([])
@@ -503,9 +504,18 @@ export function CharacterCreatePage() {
     const features: Feature[] = []
     // Species features (with subrace applied)
     effectiveRaceData?.features.forEach(f => features.push(f))
-    // Background origin feat
+    // Background origin feat (with resource tracking + chosen extras, same as a picked feat)
     if (backgroundData?.originFeat) {
-      features.push({ ...backgroundData.originFeat, source: 'Feat' })
+      const bgFeat: Feature = { ...backgroundData.originFeat, source: 'Feat' }
+      if (bgFeat.name === 'Spellfire Spark') bgFeat.description += `\n\nSpellcasting ability: ${bgFeatAbility}.`
+      const resource = FEAT_RESOURCES[bgFeat.name]
+      if (resource) {
+        const maxUses = resource.usesMax === 'proficiency' ? proficiencyBonus(totalCharLevel) : resource.usesMax
+        bgFeat.usesMax = maxUses
+        bgFeat.usesRemaining = maxUses
+        bgFeat.rechargeOn = resource.rechargeOn
+      }
+      features.push(bgFeat)
     }
     // Subclass feature
     if (selectedSubclass && classChoiceData) {
@@ -1072,6 +1082,10 @@ export function CharacterCreatePage() {
       // Also check humanOriginFeat for spell-granting feats
       if (selectedRace === 'Human' && humanOriginFeat) {
         collectFeatSpells(humanOriginFeat, humanOriginExtras)
+      }
+      // Background origin feat with fixed spells (Spellfire Spark → Sacred Flame). Magic Initiate is handled above.
+      if (backgroundData?.originFeat) {
+        collectFeatSpells(backgroundData.originFeat.name)
       }
       if (featSpellSlugs.length > 0) {
         const featSpellDetails = await Promise.all(
@@ -1668,6 +1682,7 @@ export function CharacterCreatePage() {
                     onClick={() => {
                       setSelectedBackground(bg)
                       setSkilledFeatPicks([])
+                      setBgFeatAbility('charisma')
                       if (data?.abilityScores?.options) {
                         setPrimaryBonus(data.abilityScores.options[0] as AbilityScore)
                         setSecondaryBonus(data.abilityScores.options[1] as AbilityScore)
@@ -1717,6 +1732,23 @@ export function CharacterCreatePage() {
                     <span className="font-display text-sm text-ink-900">Origin Feat: {backgroundData.originFeat.name}</span>
                   </div>
                   <p className="text-xs text-ink-600">{backgroundData.originFeat.description}</p>
+
+                  {/* Spellfire Spark: spellcasting ability for Sacred Flame */}
+                  {backgroundData.originFeat.name === 'Spellfire Spark' && (
+                    <div className="mt-3">
+                      <div className="text-xs font-display uppercase text-ink-500 mb-1">Spellcasting Ability for Sacred Flame</div>
+                      <select
+                        value={bgFeatAbility}
+                        onChange={e => setBgFeatAbility(e.target.value)}
+                        className="w-full px-3 py-2 bg-parchment-50 border border-parchment-400 rounded-lg font-body text-sm focus:outline-none focus:border-gold-400"
+                      >
+                        <option value="intelligence">Intelligence</option>
+                        <option value="wisdom">Wisdom</option>
+                        <option value="charisma">Charisma</option>
+                      </select>
+                      <p className="text-xs text-ink-400 mt-1">Sacred Flame is added to your spells. You can also cast it as a Bonus Action {proficiencyBonus(totalCharLevel)} times per Long Rest.</p>
+                    </div>
+                  )}
 
                   {/* Skilled feat: pick 3 skills or tools */}
                   {backgroundData.originFeat.name === 'Skilled' && (
@@ -2235,6 +2267,11 @@ export function CharacterCreatePage() {
                 armorProficiencies: classData?.armorProficiencies ?? [],
                 hasSpellcasting: !!classData?.spellcastingAbility,
                 hasFightingStyle: classChoiceData?.featureChoices?.some(fc => fc.label.toLowerCase().includes('fighting style')) ?? false,
+                featNames: [
+                  ...(backgroundData?.originFeat ? [backgroundData.originFeat.name] : []),
+                  ...(selectedRace === 'Human' && humanOriginFeat ? [humanOriginFeat] : []),
+                  ...Object.values(featSelections).flatMap(s => (s.type === 'feat' && s.featName ? [s.featName] : [])),
+                ],
               }}
             />
           </div>

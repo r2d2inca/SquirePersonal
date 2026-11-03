@@ -23,7 +23,7 @@ import {
   type SRDSpellSummary,
 } from '@/lib/dnd5e'
 import { getSpellSelectionRules } from '@/lib/spellcastingRules'
-import { getFeatsAvailableAtLevel, meetsPrerequisites, type FeatData } from '@/lib/featData'
+import { getFeatsAvailableAtLevel, meetsPrerequisites, FEAT_RESOURCES, type FeatData } from '@/lib/featData'
 import { applyFeat } from '@/lib/applyFeat'
 import { getClassChoiceData } from '@/lib/phbData'
 import { getClassLevels, isMulticlassed, updateMulticlassData, formatClassDisplay, buildHitDiceTotal, MULTICLASS_PROFICIENCIES, type ClassLevel } from '@/lib/multiclass'
@@ -357,6 +357,22 @@ export function LevelUpWizard({ open, onClose, character, currentSpellSlots, exi
         ef => !newFeatures.some(nf => nf.name === ef.name && nf.source === ef.source)
       )
       updates.features = [...existingFiltered, ...newFeatures]
+    }
+
+    // Feat resources tied to Proficiency Bonus (Lucky, Spellfire Spark) grow when it does.
+    if (profDiff !== 0) {
+      const base = updates.features ?? character.features
+      let changed = false
+      const scaled = base.map(f => {
+        if (f.source !== 'Feat' || FEAT_RESOURCES[f.name]?.usesMax !== 'proficiency') return f
+        const newMax = proficiencyBonus(newLevel)
+        if (f.usesMax === newMax) return f
+        changed = true
+        // A feat saved before it tracked uses (older background Lucky) starts full.
+        const usesRemaining = f.usesMax == null ? newMax : Math.min(newMax, (f.usesRemaining ?? 0) + profDiff)
+        return { ...f, usesMax: newMax, usesRemaining }
+      })
+      if (changed) updates.features = scaled
     }
 
     // Update weapon masteries if changed
@@ -893,6 +909,7 @@ export function LevelUpWizard({ open, onClose, character, currentSpellSlots, exi
                         armorProficiencies: character.proficiencies?.armor ?? [],
                         hasSpellcasting: !!character.spellcasting_ability,
                         hasFightingStyle: character.features.some(cf => cf.name.toLowerCase().includes('fighting style')),
+                        featNames: character.features.filter(cf => cf.source === 'Feat').map(cf => cf.name),
                       })) return false
                       // Search filter
                       if (featSearch && !f.name.toLowerCase().includes(featSearch.toLowerCase())) return false

@@ -190,6 +190,18 @@ export const BACKGROUND_DATA: Record<string, BackgroundData> = {
     },
     equipment: "Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP",
   },
+  'Spellfire Initiate': {
+    description: 'You have the gift of spellfire, a rare and dangerous magic that draws on the raw power of the Weave itself. Wielding it strains the body, so you have trained both mind and body to channel it efficiently. Perhaps you learned under a mentor who shared the gift, or perhaps the power simply awoke in you one day and you have been learning to live with it ever since. (Forgotten Realms: Heroes of Faerûn)',
+    skillProficiencies: ['Arcana', 'Perception'],
+    toolProficiency: 'Gaming Set',
+    abilityScores: { options: ['constitution', 'intelligence', 'charisma'] },
+    originFeat: {
+      name: 'Spellfire Spark',
+      description: 'Magic Absorption. Once per turn, when you take damage from a spell or magical effect, you can reduce that damage by 1d4. You can\'t use this benefit while you have the Incapacitated condition.\n\nSpellfire Flame. You know the Sacred Flame cantrip. Intelligence, Wisdom, or Charisma is your spellcasting ability for it (choose when you select this feat). You can also cast Sacred Flame as a Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.',
+      source: 'Background',
+    },
+    equipment: "Gaming Set (same as above), Arcane Focus (Crystal or Wand), 2 Pouches, Traveler's Clothes, 36 GP",
+  },
   Wayfarer: {
     description: 'You grew up on the streets surrounded by similarly ill-fated castoffs, a few of them friends and a few of them rivals. You slept where you could and did odd jobs for food. At times, when the hunger became unbearable, you resorted to theft. Still, you never lost your pride and never abandoned hope. Fate is not yet finished with you.',
     skillProficiencies: ['Insight', 'Stealth'],
