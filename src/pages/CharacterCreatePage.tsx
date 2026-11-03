@@ -845,62 +845,81 @@ export function CharacterCreatePage() {
       const alertFeat = features.find(f => f.name === 'Alert')
       if (alertFeat) initiativeBonus = mcPB
 
-      const character = await createCharacter({
-        user_id: user!.id,
-        is_active: true,
-        name: name.trim(),
-        race: formatRaceWithSubrace(selectedRace, selectedSubrace),
-        class: isMulticlass ? formatClassDisplay(classLevels) : selectedClass,
-        subclass: selectedSubclass,
-        level: mcTotalLevel,
-        background: selectedBackground,
-        alignment: alignment || null,
-        experience_points: XP_THRESHOLDS[mcTotalLevel] ?? 0,
-        strength: finalScoresWithASI.strength,
-        dexterity: finalScoresWithASI.dexterity,
-        constitution: finalScoresWithASI.constitution,
-        intelligence: finalScoresWithASI.intelligence,
-        wisdom: finalScoresWithASI.wisdom,
-        charisma: finalScoresWithASI.charisma,
-        max_hp: Math.max(1, mcHp),
-        current_hp: Math.max(1, mcHp),
-        temp_hp: 0,
-        armor_class: 10 + abilityModifier(finalScoresWithASI.dexterity),
-        initiative_bonus: initiativeBonus,
-        speed: effectiveRaceData?.speed ?? 30,
-        hit_dice_total: isMulticlass ? buildHitDiceTotal(classLevels) : `${startingLevel}d${hitDie}`,
-        hit_dice_remaining: mcTotalLevel,
-        death_save_successes: 0,
-        death_save_failures: 0,
-        proficiencies,
-        features,
-        copper: 0,
-        silver: 0,
-        electrum: 0,
-        gold: startingGold,
-        platinum: 0,
-        personality_traits: personalityTraits,
-        ideals,
-        bonds,
-        flaws,
-        appearance: JSON.stringify({
-          height, weight, hairColor, eyeColor, skinColor, age,
-          ...(isMulticlass ? { classLevels } : {}),
-          ...(isDragonRider ? {
-            dragonName: dragonName.trim() || 'Unnamed Dragon',
-            dragonElement,
-            dragonCurrentHp: getCompanionStats(Math.min(20, startingLevel)).maxHp,
-          } : {}),
-        }),
-        backstory,
-        spellcasting_ability: classData?.spellcastingAbility ?? null,
-        spell_save_dc: classData?.spellcastingAbility
-          ? 8 + mcPB + abilityModifier(finalScoresWithASI[classData.spellcastingAbility as AbilityScore])
-          : null,
-        spell_attack_bonus: classData?.spellcastingAbility
-          ? mcPB + abilityModifier(finalScoresWithASI[classData.spellcastingAbility as AbilityScore])
-          : null,
-      })
+      // One active character per user (idx_one_active_character). Archive the current
+      // one first, as JSON import does, and restore it if the insert fails.
+      const { data: previousActive, error: archiveError } = await supabase
+        .from('characters')
+        .update({ is_active: false })
+        .eq('user_id', user!.id)
+        .eq('is_active', true)
+        .select('id')
+      if (archiveError) throw new Error(`Failed to archive current character: ${archiveError.message}`)
+      const previousIds = (previousActive ?? []).map(c => c.id)
+
+      let character: Awaited<ReturnType<typeof createCharacter>>
+      try {
+        character = await createCharacter({
+          user_id: user!.id,
+          is_active: true,
+          name: name.trim(),
+          race: formatRaceWithSubrace(selectedRace, selectedSubrace),
+          class: isMulticlass ? formatClassDisplay(classLevels) : selectedClass,
+          subclass: selectedSubclass,
+          level: mcTotalLevel,
+          background: selectedBackground,
+          alignment: alignment || null,
+          experience_points: XP_THRESHOLDS[mcTotalLevel] ?? 0,
+          strength: finalScoresWithASI.strength,
+          dexterity: finalScoresWithASI.dexterity,
+          constitution: finalScoresWithASI.constitution,
+          intelligence: finalScoresWithASI.intelligence,
+          wisdom: finalScoresWithASI.wisdom,
+          charisma: finalScoresWithASI.charisma,
+          max_hp: Math.max(1, mcHp),
+          current_hp: Math.max(1, mcHp),
+          temp_hp: 0,
+          armor_class: 10 + abilityModifier(finalScoresWithASI.dexterity),
+          initiative_bonus: initiativeBonus,
+          speed: effectiveRaceData?.speed ?? 30,
+          hit_dice_total: isMulticlass ? buildHitDiceTotal(classLevels) : `${startingLevel}d${hitDie}`,
+          hit_dice_remaining: mcTotalLevel,
+          death_save_successes: 0,
+          death_save_failures: 0,
+          proficiencies,
+          features,
+          copper: 0,
+          silver: 0,
+          electrum: 0,
+          gold: startingGold,
+          platinum: 0,
+          personality_traits: personalityTraits,
+          ideals,
+          bonds,
+          flaws,
+          appearance: JSON.stringify({
+            height, weight, hairColor, eyeColor, skinColor, age,
+            ...(isMulticlass ? { classLevels } : {}),
+            ...(isDragonRider ? {
+              dragonName: dragonName.trim() || 'Unnamed Dragon',
+              dragonElement,
+              dragonCurrentHp: getCompanionStats(Math.min(20, startingLevel)).maxHp,
+            } : {}),
+          }),
+          backstory,
+          spellcasting_ability: classData?.spellcastingAbility ?? null,
+          spell_save_dc: classData?.spellcastingAbility
+            ? 8 + mcPB + abilityModifier(finalScoresWithASI[classData.spellcastingAbility as AbilityScore])
+            : null,
+          spell_attack_bonus: classData?.spellcastingAbility
+            ? mcPB + abilityModifier(finalScoresWithASI[classData.spellcastingAbility as AbilityScore])
+            : null,
+        })
+      } catch (err) {
+        if (previousIds.length > 0) {
+          await supabase.from('characters').update({ is_active: true }).in('id', previousIds)
+        }
+        throw err
+      }
       const characterId = character.id
 
       // Insert inventory items (skip if using gold by level)
@@ -1116,7 +1135,10 @@ export function CharacterCreatePage() {
 
       navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create character')
+      const message = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null && 'message' in err ? String((err as { message: unknown }).message) : '')
+      setError(message ? `Failed to create character: ${message}` : 'Failed to create character')
     }
   }
 
@@ -2833,6 +2855,12 @@ export function CharacterCreatePage() {
         {step === 'review' && (
           <div className="space-y-4">
             <SectionHeader>Review Your Character</SectionHeader>
+
+            {activeCharacter && (
+              <div className="p-3 bg-gold-50 border border-gold-200 rounded-lg text-sm text-ink-700">
+                Squire keeps one active character per account. Creating this character will archive <span className="font-display">{activeCharacter.name}</span>. There is no way to switch back yet, so export {activeCharacter.name} as a Squire JSON file from the dashboard first if you want to keep it.
+              </div>
+            )}
 
             <Card>
               <div className="text-center mb-4">
